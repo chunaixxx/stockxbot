@@ -1,0 +1,277 @@
+import '../mongodb.js'
+import Good from '../models/Good.js'
+
+import vk from '../commonVK.js'
+import { StepScene } from '@vk-io/scenes'
+
+import baseSendMessage from '../baseSendMessage.js'
+
+import keyboard from '../markup/keyboard.js'
+
+import { baseMarkup } from '../markup/baseMarkup.js'
+import { myAdsMarkup, myAdsMarkupNotSize } from '../markup/myAdsMarkup.js'
+import menuMarkup from '../markup/menuMarkup.js'
+import previousMarkup from '../markup/previousMarkup.js'
+import answerMarkup from '../markup/answerMarkup.js'
+
+import getGoodFromStockx from '../utils/getGoodFromStockx.js'
+import generateImage from '../utils/generateImage.js'
+
+const myAds = [
+	new StepScene('myAds', [
+		// Показ объявлений
+		async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text || ctx.scene.state.isDelete) {
+				const goods = await Good.find({ sellerId: ctx.peerId }).exec()
+				ctx.scene.state.goods = goods
+
+				if (goods.length === 0) {
+					ctx.send({
+						message: '❗ У вас отсутствуют объявления. Попробуйте создать его с помощью кнопки — Продать',
+						keyboard: keyboard(baseMarkup),
+					})
+					return ctx.scene.leave()
+				}
+
+				
+				let sendString = '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактитровать или удалить объявление\n\n'
+				
+				goods.forEach((item, index) => {
+					const { goodName, size, price, city } = item
+
+					if (size)
+						sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city}\n\n`
+					else
+						sendString += `[${index}] ${goodName}\n${price}руб. | ${city}\n\n`
+				})
+
+				ctx.scene.state.isDelete = false
+				ctx.scene.state.selectedGood = null
+				ctx.scene.state.newGood = null
+
+				return ctx.send({
+					message: sendString,
+					keyboard: keyboard(menuMarkup),
+				})
+			}
+
+			if (ctx.text == 'Меню') {
+				baseSendMessage(ctx)
+				return ctx.scene.leave()
+			}
+
+			if (ctx.scene.state.goods[+ctx.text]) {
+				ctx.scene.step.next()
+			} else {
+				ctx.send({
+					message: '❗ Укажите действительный номер объявления',
+					keyboard: keyboard(menuMarkup),
+				})
+			}
+		},
+		// Выбранный товар
+		async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text) {
+				let goods = null
+				let selectedGood = null
+
+				if (!ctx.scene.state.newGood) {
+					goods = ctx.scene.state.goods
+					selectedGood = goods[+ctx.text]
+					ctx.scene.state.selectedGood = selectedGood
+					ctx.scene.state.newGood = JSON.parse(JSON.stringify(selectedGood));
+				}
+
+				let sendString = 'Используйте кнопки, чтобы редактировать объявление\n\n'
+
+				const { goodName, size, price, city } = ctx.scene.state.selectedGood
+				if (ctx.scene.state.selectedGood.size)
+					sendString += `${goodName}\n${size} | ${price}руб. | ${city}\n\n`
+				else sendString += `${goodName}\n${price}руб. | ${city}\n\n`
+
+				const markup = ctx.scene.state.selectedGood.size ? myAdsMarkup : myAdsMarkupNotSize
+
+				return ctx.send({
+					message: sendString,
+					keyboard: keyboard(markup),
+				})
+			}
+
+			if (ctx.text == 'Назад')
+				return ctx.scene.step.go(0)
+
+			if (ctx.text == 'Удалить') {
+				try {
+					await Good.deleteOne({ _id: ctx.scene.state.selectedGood._id })
+					// Если товар был один
+					if (ctx.scene.state.goods.length == 1) {
+						ctx.send({
+							message: '❗ Товар успешно удален. У тебя нет больше товаров ',
+							keyboard: keyboard(baseMarkup)
+						})
+						return ctx.scene.leave()
+					} else {
+						ctx.send('❗ Товар успешно удален')
+						ctx.scene.state.isDelete = true
+						return ctx.scene.step.go(0)
+					}
+				} catch (e) {
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к администратору')
+					return ctx.scene.leave()
+				}
+			}
+
+			if (ctx.text == 'Цена')
+				return ctx.scene.step.go(3)
+
+			if (ctx.text == 'Размер' && ctx.scene.state.selectedGood.size)
+				return ctx.scene.step.go(2)
+
+			ctx.send('❗ Я тебя не понимаю, используй кнопки для управления объявлением')
+		},
+		// Размер
+		async ctx => {
+			console.log(ctx.scene.state.selectedGood)
+
+			if (!ctx.scene.state.selectedGood.size)
+				return ctx.scene.step.next()
+
+			if (ctx.scene.step.firstTime || !ctx.text) {
+				const selectedGood = ctx.scene.state.selectedGood
+				const goodFromStockx = await getGoodFromStockx(
+					selectedGood.link
+				)
+				ctx.scene.state.selectedGoodFromStocx = goodFromStockx
+
+				if (selectedGood.size)
+					return ctx.send({
+						message: `❗ Укажите новый размер для товара:\n\n${ goodFromStockx.allSizes.join(', ') }`,
+						keyboard: keyboard(previousMarkup),
+					})
+				else return ctx.scene.step.next()
+			}
+
+			if (ctx.text == 'Назад') {
+				return ctx.scene.step.go(1)
+			}
+
+			const selectedGoodFromStocx = ctx.scene.state.selectedGoodFromStocx
+
+			if (ctx.scene.state.selectedGood.size == ctx.text)
+				return ctx.send({
+					message: '❗ Вы указали размер который и так указан в объявлении, укажите другой',
+					keyboard: keyboard(previousMarkup),
+				})
+				
+			if (!selectedGoodFromStocx.allSizes.includes(ctx.text)) {
+				ctx.send({
+					message:
+						'Выбранного вами размера не существует. Пожалуйста напишите размер предложенный из списка выше',
+					keyboard: keyboard(previousMarkup),
+				})
+			} else {
+				ctx.scene.state.newGood.size = ctx.text
+				ctx.scene.step.go(4)
+			}
+		},
+		// Цена
+		async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text) {
+				return ctx.send({
+					message:
+						'❗ Укажите новую стоимость товара в рублях.',
+					keyboard: keyboard(previousMarkup),
+				})
+			}
+
+			if (ctx.text == 'Назад') {
+				return ctx.scene.step.go(1)
+			}
+
+			if (+ctx.scene.state.selectedGood.price == +ctx.text)
+				return ctx.send({
+					message: '❗ Вы указали размер который и так указан в объявлении, укажите другой',
+					keyboard: keyboard(previousMarkup),
+				})
+
+			const patternNumber = /^\d+$/
+			if (patternNumber.test(ctx.text) == false)
+				return ctx.send(
+					'❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✔️ 10000'
+				)
+
+			ctx.scene.state.newGood.price = ctx.text
+			ctx.scene.step.next()
+		},
+		// Уточнение по изменению товара
+		async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text) {
+				try {
+					const { imgUrl, filename, goodName } = ctx.scene.state.selectedGood
+					const imgPath = `./images/${filename}.jpg`
+
+					await generateImage(imgUrl, filename)
+					ctx.scene.state.imgPath = imgPath
+
+					const attachment = await vk.upload.messagePhoto({
+						peer_id: ctx.peerId,
+						source: {
+							value: imgPath,
+						},
+					})
+
+					ctx.scene.state.attachment = attachment
+
+					const oldSize = ctx.scene.state.selectedGood.size
+					const oldPrice = ctx.scene.state.selectedGood.price
+					const newSize = ctx.scene.state.newGood.size
+					const newPrice = ctx.scene.state.newGood.price
+
+					let strOldItem = ''
+					let strNewItem = ''
+
+					if (oldSize) {
+						strOldItem = `Старое | Размер: ${ oldSize } Стоимость: ${ oldPrice }руб.`
+						strNewItem = `Новое | Размер: ${ newSize } Стоимость: ${ newPrice }руб.`
+					} else {
+						strOldItem = `Старое | Стоимость: ${ oldPrice }`
+						strNewItem = `Новое | Стоимость: ${ newPrice }`
+					}
+
+					return ctx.send({
+						message: `❗ Проверьте старое и измененное объявление. Все верно?\n\n${goodName}\n\n${strOldItem}\n${strNewItem}`,
+						attachment,
+						keyboard: keyboard(answerMarkup),
+					})
+				} catch (e) {
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка.')
+					ctx.scene.leave()
+				}
+			}
+
+			if (ctx.text == 'Да') {
+				try {
+					const { _id, size, price } = ctx.scene.state.newGood
+	
+					await Good.findOneAndUpdate({'_id': _id }, { size, price }, {upsert: true});
+					
+					ctx.send('❗ Товар успешно изменен')
+					return ctx.scene.step.go(0)
+				} catch (e) {
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к администратору')
+					ctx.scene.leave()
+				}
+			}
+
+			if (ctx.text == 'Нет') {
+				ctx.send('❗ Возвращаю тебя к панели редактирования объявления')
+				ctx.scene.step.go(1)
+			}
+		},
+	]),
+]
+
+export default myAds
