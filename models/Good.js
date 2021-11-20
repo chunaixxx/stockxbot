@@ -13,8 +13,9 @@ const goodSchema = new Schema({
 	},
 
 	goodName: { 
-		type: String, 
-		required: true 
+		type: String,
+		index: true,
+		required: true
 	},
 
 	filename: { 

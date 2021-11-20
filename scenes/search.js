@@ -11,6 +11,7 @@ import keyboard from '../markup/keyboard.js'
 import answerMarkup from '../markup/answerMarkup.js'
 import { baseMarkup } from '../markup/baseMarkup.js'
 import menuMarkup from '../markup/menuMarkup.js'
+import methodSearch from '../markup/methodSearch.js'
 import cityMarkup from '../markup/cityMarkup.js'
 import previousMarkup from '../markup/previousMarkup.js'
 
@@ -25,116 +26,132 @@ const searchScene = [
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
 					message:
-						'❗ Для того чтобы найти необходимый предмет для покупки — укажите ссылку на товар с сайта stockx.com\n\nПример: stockx.com/pants',
-					keyboard: keyboard(menuMarkup),
+						'❗ Для того чтобы найти необходимый предмет для покупки — выберите с помощью какого метода собиратесь искать товар',
+					keyboard: keyboard([...methodSearch, ...menuMarkup]),
 				})
+			
+			ctx.scene.state.isSearchName = false
+			ctx.scene.state.isSearchLink = false
 
 			if (ctx.text == 'Меню') {
 				baseSendMessage(ctx)
 				return ctx.scene.leave()
 			}
 
+			if (ctx.text == 'Название') {
+				ctx.scene.state.isSearchName = true
+				ctx.scene.step.go(1)
+			}
+
+			if (ctx.text == 'Ссылка') {
+				ctx.scene.state.isSearchLink = true
+				ctx.scene.step.go(2)
+			}
+		},
+		// Нахождение товаров по имени
+		async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text)
+				return ctx.send({
+					message:
+						'❗ Введите частичное название товара и мы найдем подходящие товары по вашему запросу',
+					keyboard: keyboard(previousMarkup),
+				})
+
+			if (ctx.text == 'Назад')
+				return ctx.scene.step.go(0)
+
+			if (ctx.text.length < 3)
+				return ctx.send({
+					message:
+						'❗ Минимальная длина запроса — 3 символа. Введите другой запрос',
+					keyboard: keyboard(previousMarkup),
+				})
+
+			ctx.scene.state.query = ctx.text
+			ctx.scene.state.searchedGoods = await Good.find({'goodName': {'$regex': '.*' + ctx.text +'.*', $options: 'i'}}).exec()
+
+			ctx.scene.step.go(3)
+		},
+		// Нахождение товаров по ссылке
+		async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text)
+			return ctx.send({
+				message: '❗ Укажите ссылку на товар с сайта stockx.com, чтобы показать все объявления конкретного товара\n\nШаблон: stockx.com/*',
+				keyboard: keyboard(previousMarkup),
+			})
+
+			if (ctx.text == 'Назад')
+				return ctx.scene.step.go(0)
 
 			const link = convertURL(ctx.text)
-			ctx.scene.state.link = link
-
-			const searchedGoods = await Good.find({ link }).exec()
-
-
-
-			if (searchedGoods.length) {
-				const {	name } = await getGoodFromStockx(link)
-				let sendString = `❗ По твоему запросу "${name}" найдены такие объявления:\n\n`
-	
-				searchedGoods.forEach((item, index) => {
-					const { sellerName, sellerId, city, size, price} = item
-	
-					if (size)
-						sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nРазмер: ${size}, Цена: ${price}руб.\n\n`
-					else
-						sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
-				})
-
-				ctx.send(sendString)
-				
-				return ctx.scene.leave()
-			} else {
-				ctx.send('Товаров нет')
-				return ctx.scene.leave()
-			}
-
-			if (ctx.scene.state.good) ctx.scene.step.next()
-			else
-				ctx.send({
-					message: `❗ Товар не найден по данной ссылке, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
+			const goodFromStockx = await getGoodFromStockx(link)
+			if (!goodFromStockx)
+				return ctx.send({
+					message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
 					keyboard: keyboard(menuMarkup)
 				})
+	
+			ctx.scene.state.goodName = goodFromStockx.name
+			ctx.scene.state.searchedGoods = await Good.find({ link }).exec()
+
+			ctx.scene.step.go(3)
 		},
+		// Вывод пользователю найденных товаров
 		async ctx => {
-			if (ctx.scene.step.firstTime || !ctx.text) {
-				try {
-					const { imgUrl, filename } = ctx.scene.state.good
-					const goodName = ctx.scene.state.good.name
-					const imgPath = `./images/${filename}.jpg`
+			if (ctx.text == 'Назад')
+				return ctx.scene.step.go(0)
 
-					await generateImage(imgUrl, filename)
-					ctx.scene.state.imgPath = imgPath
+			const searchedGoods = ctx.scene.state.searchedGoods
 
-					const attachment = await vk.upload.messagePhoto({
-						peer_id: ctx.peerId,
-						source: {
-							value: imgPath,
-						},
+			if (ctx.scene.state.isSearchLink) {
+				const goodName = ctx.scene.state.goodName
+				if (searchedGoods.length) {
+					let sendString = `❗ По твоему запросу "${goodName}" найдены такие объявления:\n\n`
+					searchedGoods.forEach((item, index) => {
+						const { sellerName, sellerId, city, size, price} = item
+		
+						if (size)
+							sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nРазмер: ${size}, Цена: ${price}руб.\n\n`
+						else
+							sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
 					})
-
-					ctx.scene.state.attachment = attachment
-
+	
 					ctx.send({
-						message: `❗ Мы нашли твой товар?\n\n${goodName}`,
-						attachment,
-						keyboard: keyboard(answerMarkup),
+						message: sendString,
+						keyboard: keyboard(previousMarkup)
 					})
-				} catch (e) {
-					ctx.send('Произошла какая-то ошибка.')
-					ctx.scene.leave()
-				}
-				
-			}
-
-			if (ctx.text == 'Да')
-				ctx.scene.step.next()
-
-			if (ctx.text == 'Нет') {
-				ctx.scene.step.go(0)
-			}
-		},
-		async ctx => {
-			const sizes = ctx.scene.state.good.allSizes
-
-			if (ctx.scene.step.firstTime || !ctx.text) {
-				if (sizes) {
-					return ctx.send({
-						message: `❗ Теперь укажи размер который тебе подходит. Пожалуйста, обрати внимание на то, что у женских и мужских моделей разная размерная сетка, поэтому пойми какой размер тебе нужен из списка на сайте:\n\n${ sizes.join(', ') }`,
-						keyboard: keyboard(previousMarkup),
+				} else {
+					ctx.send({
+						message: `❗ Товар "${goodName}" никто не продает на нашей площадке, попробуй воспользоваться поиском по названию:`,
 					})
-				}
-			}
-
-			if (sizes) {
-				if (ctx.text == 'Назад') {
 					return ctx.scene.step.go(0)
 				}
+			}
 
-				if (!sizes.includes(ctx.text)) {
-					ctx.send(
-						'❗ Выбранного вами размера не существует. Пожалуйста напишите размер предложенный из списка выше'
-					)
+			if (ctx.scene.state.isSearchName) {
+				if (searchedGoods.length) {
+					let sendString = `❗ По твоему запросу "${ctx.text}" найдены такие объявления:\n\n`
+		
+					searchedGoods.forEach((item, index) => {
+						const { sellerName, sellerId, city, goodName, size, price} = item
+		
+						if (size)
+							sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\n${goodName} | \nРазмер: ${size}, Цена: ${price}руб.\n\n`
+						else
+							sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
+					})
+	
+					ctx.send({
+						message: sendString,
+						keyboard: keyboard(previousMarkup)
+					})
 				} else {
-					ctx.scene.state.size = ctx.text
-					ctx.scene.step.next()
+					ctx.send({
+						message: `❗ К сожалению, по вашему запросу ${ctx.scene.state.query} ничего не найдено на нашей площадке.`, 
+					})
+					return ctx.scene.step.go(0)
 				}
-			} else
-				ctx.scene.step.next()
+			}
 		},
 		async ctx => {
 			ctx.send('Good')

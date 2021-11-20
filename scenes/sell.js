@@ -28,7 +28,7 @@ const sellScene = [
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
 					message:
-						'❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nПример: stockx.com/pants',
+						'❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nШаблон: stockx.com/*',
 					keyboard: keyboard(menuMarkup),
 				})
 
@@ -43,7 +43,7 @@ const sellScene = [
 			if (ctx.scene.state.good) ctx.scene.step.next()
 			else
 				ctx.send({
-					message: `❗ Товар не найден по данной ссылке, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
+					message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
 					keyboard: keyboard(menuMarkup)
 				})
 		},
