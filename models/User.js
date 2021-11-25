@@ -2,6 +2,11 @@ import mongoose from 'mongoose'
 const Schema = mongoose.Schema
 
 const goodSchema = new Schema({
+	userId: {
+		type: String,
+		required: true,
+	},
+
 	username: {
 		type: String,
 		required: true,
@@ -16,6 +21,18 @@ const goodSchema = new Schema({
 		type: Boolean, 
 		default: false
 	},
+
+	searchInfo: {
+		count: {
+			type: Number,
+			default: 0
+		},
+
+		lastSearch: {
+			type: Date,
+			default: null
+		}
+	}
 })
 
 const User = mongoose.model('User', goodSchema)

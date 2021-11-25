@@ -1,5 +1,6 @@
 import '../mongodb.js'
 import Good from '../models/Good.js'
+import User from '../models/User.js'
 
 import vk from '../commonVK.js'
 import { StepScene } from '@vk-io/scenes'
@@ -16,13 +17,14 @@ import answerMarkup from '../markup/answerMarkup.js'
 
 import getGoodFromStockx from '../utils/getGoodFromStockx.js'
 import generateImage from '../utils/generateImage.js'
+import { resetSearchInfo } from '../utils/updateSearchInfo.js'
 
 const myAds = [
-	new StepScene('myAds', [
+	new StepScene('profile', [
 		// Показ объявлений
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text || ctx.scene.state.isDelete) {
-				const goods = await Good.find({ sellerId: ctx.peerId }).exec()
+				const goods = await Good.find({ sellerId: ctx.senderId }).exec()
 				ctx.scene.state.goods = goods
 
 				if (goods.length === 0) {
@@ -33,9 +35,34 @@ const myAds = [
 					return ctx.scene.leave()
 				}
 
+				const countGoods = goods.length
+				const leftGoods = process.env.MAX_GOODS - countGoods
+
+				const user = await User.findOne({ userId: ctx.senderId }).exec()
+
+				const countSearch = user.searchInfo.count
+				const leftSearch = process.env.MAX_SEARCH - user.searchInfo.count
+				const extendedAccess = user.extendedAccess
+
+				const lastSearch = user.searchInfo.lastSearch
+				const cooldownSearch = process.env.COOLDOWN_SEARCH
+
+				let sendString = ''
+
+				if (lastSearch && Date.now() - lastSearch.getTime() >= cooldownSearch) {
+					await resetSearchInfo(ctx.senderId)
+					sendString += `❗ Вам снова доступно 3 новых поиска!\n\n`
+				}
+
 				
-				let sendString = '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактитровать или удалить объявление\n\n'
-				
+
+				if (extendedAccess) {
+					sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ∞)\nПоисков: ${ countSearch } (осталось ∞)\nВы имеете расширенный доступ в котором нет ограничений\n\n`
+				} else {
+					sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\nДля снятия ограничений — оформите расширенный доступ\n\n`
+				}
+
+				sendString += '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактитровать или удалить объявление\n\n'
 				goods.forEach((item, index) => {
 					const { goodName, size, price, city } = item
 

@@ -1,5 +1,6 @@
 import '../mongodb.js'
 import Good from '../models/Good.js'
+import User from '../models/User.js'
 
 import vk from '../commonVK.js'
 import { StepScene } from '@vk-io/scenes'
@@ -15,31 +16,61 @@ import methodSearch from '../markup/methodSearch.js'
 import skipMarkup from '../markup/skipMarkup.js'
 import previousMarkup from '../markup/previousMarkup.js'
 
-import getUserName from '../utils/getUserName.js'
 import getGoodFromStockx from '../utils/getGoodFromStockx.js'
 import generateImage from '../utils/generateImage.js'
 import convertURL from '../utils/convertURL.js'
 import sortGoodsByPrice from '../utils/sortGoodsByPrice.js'
+import { incrementSearch, resetSearchInfo } from '../utils/updateSearchInfo.js'
 
 const searchScene = [
 	new StepScene('search', [
 		async ctx => {
-			ctx.scene.state.query = null
-			ctx.scene.state.link = null
-			ctx.scene.state.range = [0, Infinity]
-			ctx.scene.state.sizeRange = []
+			if (ctx.text == 'Меню') {
+				baseSendMessage(ctx)
+				return ctx.scene.leave()
+			}
 
-			if (ctx.scene.step.firstTime || !ctx.text)
+			try {
+				const user = await User.findOne({ userId: ctx.senderId })
+				
+				const countSearch = user.searchInfo.count
+				const lastSearch = user.searchInfo.lastSearch
+				const maxCountSearch = process.env.MAX_GOODS
+				const extendedAccess = user.extendedAccess
+
+				// const msMounth = 1000 * 60 * 60 * 24 * 30
+				const cooldownSearch = process.env.COOLDOWN_SEARCH
+
+				if (countSearch >= maxCountSearch && extendedAccess == false ) {
+					if (Date.now() - lastSearch.getTime() >= cooldownSearch) {
+						await resetSearchInfo(ctx.senderId)
+					} else {
+						ctx.send({
+							message: `❗ Вы превысили лимит поисков (${ countSearch }/${ maxCountSearch }). Следующие ${ maxCountSearch } поиска будут доступны ровно через месяц. Оформите расширенный доступ для неограниченного количества поисков`,
+							keyboard: keyboard(menuMarkup)	
+						})
+						return ctx.scene.leave()
+					}
+				}
+			} catch (e) {
+				console.log(e)
+				ctx.send('❗ Произошла какая-то ошибка. Обратитесь к администратору')
+				return ctx.scene.leave()
+			}
+
+			if (ctx.scene.step.firstTime || !ctx.text) {
 				return ctx.send({
 					message:
 						'❗ Для того чтобы найти необходимый предмет для покупки — выберите с помощью какого метода собиратесь искать товар',
 					keyboard: keyboard([...methodSearch, ...menuMarkup]),
 				})
-
-			if (ctx.text == 'Меню') {
-				baseSendMessage(ctx)
-				return ctx.scene.leave()
 			}
+
+			ctx.scene.state.query = null
+			ctx.scene.state.link = null
+			ctx.scene.state.range = [0, Infinity]
+			ctx.scene.state.sizeRange = []
+
 
 			if (ctx.text == 'Название') {
 				ctx.scene.step.go(1)
@@ -89,7 +120,7 @@ const searchScene = [
 			if (!goodFromStockx)
 				return ctx.send({
 					message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
-					keyboard: keyboard(menuMarkup)
+					keyboard: keyboard(previousMarkup)
 				})
 	
 			ctx.scene.state.goodName = goodFromStockx.name
@@ -183,23 +214,17 @@ const searchScene = [
 						else
 							sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
 					})
-	
-					ctx.send({
-						message: sendString,
-						keyboard: keyboard([...previousMarkup, ...menuMarkup])
-					})
+
+					await incrementSearch(ctx.senderId)
+
+					ctx.send(sendString)
 				} else {
 					ctx.send({
 						message: `❗ Товар "${goodName}" никто не продает на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`,
 					})
-					return ctx.scene.step.go(0)
 				}
+				return ctx.scene.step.go(0)
 			}
-
-
-
-
-
 
 			if (ctx.scene.state.query) {
 				const minPrice = ctx.scene.state.range[0]
@@ -228,7 +253,6 @@ const searchScene = [
 					let sendString = `❗ По твоему запросу "${ ctx.scene.state.query }" найдены такие объявления:\n\n`
 		
 					searchedGoods.forEach((item, index) => {
-						console.log(item)
 						const { sellerName, sellerId, city, goodName, size, price} = item
 		
 						if (size)
@@ -236,17 +260,16 @@ const searchScene = [
 						else
 							sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | Цена: ${ price }руб.\n\n`
 					})
+
+					await incrementSearch(ctx.senderId)
 	
-					ctx.send({
-						message: sendString,
-						keyboard: keyboard([...previousMarkup, ...menuMarkup])
-					})
+					ctx.send(sendString)
 				} else {
 					ctx.send({
 						message: `❗ К сожалению, по вашему запросу ${ctx.scene.state.query} ничего не найдено на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`, 
 					})
-					return ctx.scene.step.go(0)
 				}
+				return ctx.scene.step.go(0)
 			}
 		},
 	])	

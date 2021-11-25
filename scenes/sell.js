@@ -19,7 +19,7 @@ import getGoodFromStockx from '../utils/getGoodFromStockx.js'
 import generateImage from '../utils/generateImage.js'
 import convertURL from '../utils/convertURL.js'
 
-const sellScene = [
+const profileScene = [
 	new StepScene('sell', [
 		// Обработка ссылки
 		async ctx => {
@@ -223,4 +223,4 @@ const sellScene = [
 	]),
 ]
 
-export default sellScene
+export default profileScene

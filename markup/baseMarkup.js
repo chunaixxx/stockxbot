@@ -19,7 +19,7 @@ export const baseMarkupNotFaq = [
 	],
 	[
 		Keyboard.textButton({
-			label: 'Мои объявления',
+			label: 'Профиль',
 			color: 'default',
 			payload: {
 				choice: 'myads',
