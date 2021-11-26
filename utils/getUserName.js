@@ -12,7 +12,7 @@ const getUserName = async id => {
 	
 		return { firstname, lastname }
 	} else {
-		return {}
+		return { firstname: 'No', lastname: 'Name' }
 	}
 }
 

@@ -59,7 +59,7 @@ const searchScene = [
 				}
 			} catch (e) {
 				console.log(e)
-				ctx.send('❗ Произошла какая-то ошибка. Обратитесь к администратору')
+				ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
 				return ctx.scene.leave()
 			}
 
@@ -191,106 +191,118 @@ const searchScene = [
 
 				const sizeRange = ctx.scene.state.sizeRange
 
-				if (sizeRange.length) {
-					ctx.scene.state.searchedGoods = await Good.find({ 
-						link,
-						'price': { $gte : minPrice, $lte : maxPrice},
-						'size': { $in: sizeRange }
-					}).exec()
-				} else {
-					ctx.scene.state.searchedGoods = await Good.find({ 
-						link,
-						'price': { $gte : minPrice, $lte : maxPrice},
-					}).exec()
-				}
-
-				ctx.scene.state.searchedGoods.sort(sortGoodsByPrice());
-				
-				const searchedGoods = ctx.scene.state.searchedGoods
-				const goodName = ctx.scene.state.goodName
-				
-				if (searchedGoods.length) {
-					let sendString = `❗ По твоему запросу "${goodName}" найдены такие объявления:\n\n`
-					searchedGoods.forEach((item, index) => {
-						const { sellerName, sellerId, city, size, price} = item
-		
-						if (size)
-							sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nРазмер: ${size}, Цена: ${price}руб.\n\n`
-						else
-							sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
-					})
-
-					await incrementSearch(ctx.senderId)
-
-					ctx.send(sendString)
-				} else {
-					ctx.send({
-						message: `❗ Товар "${goodName}" никто не продает на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`,
-					})
-				}
-
-				await BotConfig.updateOne(
-					{
-						$inc: { 'stats.countSearch': 1 }
+				try {
+					if (sizeRange.length) {
+						ctx.scene.state.searchedGoods = await Good.find({ 
+							link,
+							'price': { $gte : minPrice, $lte : maxPrice},
+							'size': { $in: sizeRange }
+						}).exec()
+					} else {
+						ctx.scene.state.searchedGoods = await Good.find({ 
+							link,
+							'price': { $gte : minPrice, $lte : maxPrice},
+						}).exec()
 					}
-				)
 
-				return ctx.scene.step.go(0)
+					ctx.scene.state.searchedGoods.sort(sortGoodsByPrice());
+					
+					const searchedGoods = ctx.scene.state.searchedGoods
+					const goodName = ctx.scene.state.goodName
+					
+					if (searchedGoods.length) {
+						let sendString = `❗ По твоему запросу "${goodName}" найдены такие объявления:\n\n`
+						searchedGoods.forEach((item, index) => {
+							const { sellerName, sellerId, city, size, price} = item
+			
+							if (size)
+								sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nРазмер: ${size}, Цена: ${price}руб.\n\n`
+							else
+								sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
+						})
+
+						await incrementSearch(ctx.senderId)
+
+						ctx.send(sendString)
+					} else {
+						ctx.send({
+							message: `❗ Товар "${goodName}" никто не продает на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`,
+						})
+					}
+
+					await BotConfig.updateOne(
+						{
+							$inc: { 'stats.countSearch': 1 }
+						}
+					)
+
+					return ctx.scene.step.go(0)
+				} catch (e) {
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
+				}
 			}
 
 			if (ctx.scene.state.query) {
-				const minPrice = ctx.scene.state.range[0]
-				const maxPrice = ctx.scene.state.range[1]
+				try {
+					const minPrice = ctx.scene.state.range[0]
+					const maxPrice = ctx.scene.state.range[1]
 
-				const sizeRange = ctx.scene.state.sizeRange
+					const sizeRange = ctx.scene.state.sizeRange
 
-				if (sizeRange.length) {
-					ctx.scene.state.searchedGoods = await Good.find({
-						'goodName': {'$regex': '.*' + ctx.scene.state.query +'.*', $options: 'i'},
-						'price': { $gte :  minPrice, $lte :  maxPrice},
-						'size': { $in: sizeRange }
-					}).exec()
-				} else {
-					ctx.scene.state.searchedGoods = await Good.find({
-						'goodName': {'$regex': '.*' + ctx.scene.state.query +'.*', $options: 'i'},
-						'price': { $gte :  minPrice, $lte :  maxPrice},
-					}).exec()					
-				}
-
-				ctx.scene.state.searchedGoods.sort(sortGoodsByPrice());
-				
-				const searchedGoods = ctx.scene.state.searchedGoods
-				
-				if (searchedGoods.length) {
-					let sendString = `❗ По твоему запросу "${ ctx.scene.state.query }" найдены такие объявления:\n\n`
-		
-					searchedGoods.forEach(async (item, index) => {
-						const { sellerName, sellerId, city, goodName, size, price, _id} = item;
-
-						await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
-		
-						if (size)
-							sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | \nРазмер: ${ size }, Цена: ${ price }руб.\n\n`
-						else
-							sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | Цена: ${ price }руб.\n\n`
-					})
-
-					await incrementSearch(ctx.senderId)
-	
-					ctx.send(sendString)
-				} else {
-					ctx.send({
-						message: `❗ К сожалению, по вашему запросу ${ctx.scene.state.query} ничего не найдено на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`, 
-					})
-				}
-
-				await BotConfig.updateOne(
-					{
-						$inc: { 'stats.countSearch': 1 }
+					if (sizeRange.length) {
+						ctx.scene.state.searchedGoods = await Good.find({
+							'goodName': {'$regex': '.*' + ctx.scene.state.query +'.*', $options: 'i'},
+							'price': { $gte :  minPrice, $lte :  maxPrice},
+							'size': { $in: sizeRange }
+						}).exec()
+					} else {
+						ctx.scene.state.searchedGoods = await Good.find({
+							'goodName': {'$regex': '.*' + ctx.scene.state.query +'.*', $options: 'i'},
+							'price': { $gte :  minPrice, $lte :  maxPrice},
+						}).exec()					
 					}
-				)
 
-				return ctx.scene.step.go(0)
+					ctx.scene.state.searchedGoods.sort(sortGoodsByPrice());
+					
+					const searchedGoods = ctx.scene.state.searchedGoods
+					
+					if (searchedGoods.length) {
+						let sendString = `❗ По твоему запросу "${ ctx.scene.state.query }" найдены такие объявления:\n\n`
+			
+						searchedGoods.forEach(async (item, index) => {
+							const { sellerName, sellerId, city, goodName, size, price, _id} = item;
+
+							await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
+			
+							if (size)
+								sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | \nРазмер: ${ size }, Цена: ${ price }руб.\n\n`
+							else
+								sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | Цена: ${ price }руб.\n\n`
+						})
+
+						await incrementSearch(ctx.senderId)
+		
+						ctx.send(sendString)
+					} else {
+						ctx.send({
+							message: `❗ К сожалению, по вашему запросу ${ctx.scene.state.query} ничего не найдено на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`, 
+						})
+					}
+
+					await BotConfig.updateOne(
+						{
+							$inc: { 'stats.countSearch': 1 }
+						}
+					)
+
+					return ctx.scene.step.go(0)
+				} catch (e) {
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
+				}
 			}
 		},
 	])	

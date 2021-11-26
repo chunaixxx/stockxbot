@@ -9,22 +9,27 @@ import User from './models/User.js'
 export default async ctx => {
 	if (ctx.senderId <= 0) return
 
-	const foundUser = await User.findOne({ userId: ctx.senderId }).exec()
+	try {
+		const foundUser = await User.findOne({ userId: ctx.senderId }).exec()
 
-    if (!foundUser) {
-        const { firstname, lastname } = await getUserName(ctx.senderId)
+		if (!foundUser) {
+			const { firstname, lastname } = await getUserName(ctx.senderId)
 
-        const user = new User({
-            userId: ctx.senderId,
-            username: `${ firstname } ${ lastname }`,
-        })
+			const user = new User({
+				userId: ctx.senderId,
+				username: `${ firstname } ${ lastname }`,
+			})
 
-        ctx.state.user = user
+			ctx.state.user = user
 
-        await user.save()
-    } else {
-        ctx.state.user = foundUser
-    }
+			await user.save()
+		} else {
+			ctx.state.user = foundUser
+		}
+	} catch (e) {
+		return ctx.send('❗ Произошла какая-то ошибка, обратитесь к администратору')
+		console.log(e)
+	}
 
 	const settingsAccess = ctx.state?.user?.settingsAccess
 	const adminAccess = ctx.state?.user?.adminAccess

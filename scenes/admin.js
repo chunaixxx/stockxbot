@@ -96,10 +96,8 @@ const adminScene = [
                 }
             } catch (e) {
                 console.log(e)
-                return ctx.send({
-                    message: '❗ Произошла какая-то ошибка, обратитесь к главному администратору',
-                    keyboard: keyboard(previousMarkup)
-                })
+                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                return ctx.scene.leave()
             }
         },
 
@@ -121,11 +119,9 @@ const adminScene = [
                     ctx.send('❗ Пользователю успешно выдан расширенный доступ')
                     return ctx.scene.step.go(0)
                 } catch (e) {
-                    console.log(e)
-                    return ctx.send({
-                        message: '❗ Произошла какая-то ошибка, обратитесь к главному администратору',
-                        keyboard: keyboard(previousMarkup)
-                    })
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
                 }
             }
         },
@@ -146,11 +142,9 @@ const adminScene = [
                     ctx.send('❗ У пользователя снят расширенный доступ')
                     return ctx.scene.step.go(0)
                 } catch (e) {
-                    console.log(e)
-                    return ctx.send({
-                        message: '❗ Произошла какая-то ошибка, обратитесь к главному администратору',
-                        keyboard: keyboard(previousMarkup)
-                    })
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
                 }
             } else {
                 ctx.send('❗ У пользователя нет расширенного доступа')
@@ -174,11 +168,9 @@ const adminScene = [
                     ctx.send('❗ Пользователю успешно выданы полномочия администратора')
                     return ctx.scene.step.go(0)
                 } catch (e) {
-                    console.log(e)
-                    return ctx.send({
-                        message: '❗ Произошла какая-то ошибка, обратитесь к главному администратору',
-                        keyboard: keyboard(previousMarkup)
-                    })
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
                 }
             }
         },
@@ -202,11 +194,9 @@ const adminScene = [
                     ctx.send('❗ У пользователя сняты полномочия администратора')
                     return ctx.scene.step.go(0)
                 } catch (e) {
-                    console.log(e)
-                    return ctx.send({
-                        message: '❗ Произошла какая-то ошибка, обратитесь к главному администратору',
-                        keyboard: keyboard(previousMarkup)
-                    })
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
                 }
             } else {
                 ctx.send('❗ У пользователя нет полномочий администратора')
@@ -228,10 +218,8 @@ const adminScene = [
                 return ctx.scene.step.go(0)
             } catch (e) {
                 console.log(e)
-                return ctx.send({
-                    message: '❗ Произошла какая-то ошибка, обратитесь к главному администратору',
-                    keyboard: keyboard(previousMarkup)
-                })
+                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                return ctx.scene.leave()
             }
         },
 
@@ -240,16 +228,22 @@ const adminScene = [
             if (ctx.text == 'Назад')
                 return ctx.scene.step.go(0)
 
-            const goodsActiveCount = (await Good.find()).length
-            const usersCount = (await User.find()).length
-            const otherStats = await BotConfig.findOne()
-
-            let sendString = `❗ Общая статистика:\n\nПоиски: ${otherStats.stats.countSearch} (${otherStats.stats.countFoundSearch} из них найденых)\nУдаленные товары: ${otherStats.stats.countDelete}\nВсего товаров: ${otherStats.stats.countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}`
-
-            return ctx.send({
-                message: sendString,
-                keyboard: keyboard(previousMarkup)
-            })
+            try {
+                const goodsActiveCount = (await Good.find()).length
+                const usersCount = (await User.find()).length
+                const otherStats = await BotConfig.findOne()
+    
+                let sendString = `❗ Общая статистика:\n\nПоиски: ${otherStats.stats.countSearch} (${otherStats.stats.countFoundSearch} из них найденых)\nУдаленные товары: ${otherStats.stats.countDelete}\nВсего товаров: ${otherStats.stats.countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}`
+    
+                return ctx.send({
+                    message: sendString,
+                    keyboard: keyboard(previousMarkup)
+                })   
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                return ctx.scene.leave()
+            }
         },
 	])	
 ]

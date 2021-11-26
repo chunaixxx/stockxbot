@@ -25,62 +25,68 @@ const myAds = [
 		// Показ объявлений
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text || ctx.scene.state.isDelete) {
-				const goods = await Good.find({ sellerId: ctx.senderId }).exec()
-				ctx.scene.state.goods = goods
+				try {
+					const goods = await Good.find({ sellerId: ctx.senderId }).exec()
+					ctx.scene.state.goods = goods
 
-				const botConfig = (await BotConfig.findOne())
+					const botConfig = (await BotConfig.findOne())
 
-				const countGoods = goods.length
-				const leftGoods = botConfig.maxGoods - countGoods
+					const countGoods = goods.length
+					const leftGoods = botConfig.maxGoods - countGoods
 
-				const user = await User.findOne({ userId: ctx.senderId }).exec()
+					const user = await User.findOne({ userId: ctx.senderId }).exec()
 
-				const countSearch = user.searchInfo.count
-				const leftSearch = botConfig.maxSearch - user.searchInfo.count
-				const extendedAccess = user.extendedAccess
+					const countSearch = user.searchInfo.count
+					const leftSearch = botConfig.maxSearch - user.searchInfo.count
+					const extendedAccess = user.extendedAccess
 
-				const lastSearch = user.searchInfo.lastSearch
-				const cooldownSearch = process.env.COOLDOWN_SEARCH
+					const lastSearch = user.searchInfo.lastSearch
+					const cooldownSearch = process.env.COOLDOWN_SEARCH
 
-				let sendString = ''
+					let sendString = ''
 
-				if (lastSearch && Date.now() - lastSearch.getTime() >= cooldownSearch) {
-					await resetSearchInfo(ctx.senderId)
-					sendString += `❗ Вам снова доступно 3 новых поиска!\n\n`
-				}
+					if (lastSearch && Date.now() - lastSearch.getTime() >= cooldownSearch) {
+						await resetSearchInfo(ctx.senderId)
+						sendString += `❗ Вам снова доступно 3 новых поиска!\n\n`
+					}
 
-				if (extendedAccess) {
-					sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ∞)\nПоисков: ${ countSearch } (осталось ∞)\nВы имеете расширенный доступ в котором нет ограничений\n\n`
-				} else {
-					sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\n\n❗ Для снятия ограничений — оформите расширенный доступ\n\n`
-				}
+					if (extendedAccess) {
+						sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ∞)\nПоисков: ${ countSearch } (осталось ∞)\nВы имеете расширенный доступ в котором нет ограничений\n\n`
+					} else {
+						sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\n\n❗ Для снятия ограничений — оформите расширенный доступ\n\n`
+					}
 
-				if (goods.length === 0) {
-					ctx.send({
-						message: sendString + '❗ У вас отсутствуют объявления. Попробуйте создать их с помощью кнопки — Продать',
-						keyboard: keyboard(baseMarkup),
+					if (goods.length === 0) {
+						ctx.send({
+							message: sendString + '❗ У вас отсутствуют объявления. Попробуйте создать их с помощью кнопки — Продать',
+							keyboard: keyboard(baseMarkup),
+						})
+						return ctx.scene.leave()
+					}
+
+					sendString += '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n'
+					goods.forEach((item, index) => {
+						const { goodName, size, price, city, views } = item
+
+						if (size)
+							sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | ${views} показов\n\n`
+						else
+							sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | ${views} показов\n\n`
 					})
+
+					ctx.scene.state.isDelete = false
+					ctx.scene.state.selectedGood = null
+					ctx.scene.state.newGood = null
+
+					return ctx.send({
+						message: sendString,
+						keyboard: keyboard(menuMarkup),
+					})
+				} catch (e) {
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
 					return ctx.scene.leave()
 				}
-
-				sendString += '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактитровать или удалить объявление\n\n'
-				goods.forEach((item, index) => {
-					const { goodName, size, price, city, views } = item
-
-					if (size)
-						sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | ${views} показов\n\n`
-					else
-						sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | ${views} показов\n\n`
-				})
-
-				ctx.scene.state.isDelete = false
-				ctx.scene.state.selectedGood = null
-				ctx.scene.state.newGood = null
-
-				return ctx.send({
-					message: sendString,
-					keyboard: keyboard(menuMarkup),
-				})
 			}
 
 			if (ctx.text == 'Меню') {
@@ -110,7 +116,7 @@ const myAds = [
 					ctx.scene.state.newGood = JSON.parse(JSON.stringify(selectedGood));
 				}
 
-				let sendString = 'Используйте кнопки, чтобы редактировать объявление\n\n'
+				let sendString = '❗ Используйте кнопки, чтобы редактировать объявление\n\n'
 
 				const { goodName, size, price, city } = ctx.scene.state.selectedGood
 				if (ctx.scene.state.selectedGood.size)
@@ -173,18 +179,24 @@ const myAds = [
 				return ctx.scene.step.next()
 
 			if (ctx.scene.step.firstTime || !ctx.text) {
-				const selectedGood = ctx.scene.state.selectedGood
-				const goodFromStockx = await getGoodFromStockx(
-					selectedGood.link
-				)
-				ctx.scene.state.selectedGoodFromStocx = goodFromStockx
+				try {
+					const selectedGood = ctx.scene.state.selectedGood
+					const goodFromStockx = await getGoodFromStockx(
+						selectedGood.link
+					)
+					ctx.scene.state.selectedGoodFromStocx = goodFromStockx
 
-				if (selectedGood.size)
-					return ctx.send({
-						message: `❗ Укажите новый размер для товара:\n\n${ goodFromStockx.allSizes.join(', ') }`,
-						keyboard: keyboard(previousMarkup),
-					})
-				else return ctx.scene.step.next()
+					if (selectedGood.size)
+						return ctx.send({
+							message: `❗ Укажите новый размер для товара:\n\n${ goodFromStockx.allSizes.join(', ') }`,
+							keyboard: keyboard(previousMarkup),
+						})
+					else return ctx.scene.step.next()
+				} catch (e) {
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
+				}
 			}
 
 			if (ctx.text == 'Назад') {
@@ -235,6 +247,12 @@ const myAds = [
 				return ctx.send(
 					'❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✔️ 10000'
 				)
+
+			if (+ctx.text > 10000000)
+				return ctx.send('❗ Максимальная стоимость товара 10000000руб.')
+
+			if (+ctx.text < 1)
+				return ctx.send('❗ Минимальная стоимость товара 1руб.')
 
 			ctx.scene.state.newGood.price = ctx.text
 			ctx.scene.step.next()
@@ -296,8 +314,8 @@ const myAds = [
 					return ctx.scene.step.go(0)
 				} catch (e) {
 					console.log(e)
-					ctx.send('❗ Произошла какая-то ошибка, обратитесь к администратору')
-					ctx.scene.leave()
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
 				}
 			}
 

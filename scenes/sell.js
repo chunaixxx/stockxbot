@@ -30,39 +30,45 @@ const profileScene = [
 				return ctx.scene.leave()
 			}
 
-			const goodsOfUser = await Good.find({ sellerId: ctx.senderId })
-			const user = await User.findOne({ userId: ctx.senderId })
+			try {
+				const goodsOfUser = await Good.find({ sellerId: ctx.senderId })
+				const user = await User.findOne({ userId: ctx.senderId })
 
-			const countGoods = goodsOfUser.length
-			const maxGoods = (await BotConfig.findOne()).maxGoods
-			const extendedAccess = user.extendedAccess
+				const countGoods = goodsOfUser.length
+				const maxGoods = (await BotConfig.findOne()).maxGoods
+				const extendedAccess = user.extendedAccess
 
-			if (countGoods >= maxGoods && extendedAccess == false)
-				return ctx.send({
-					message: `❗ Вы превысили лимит выставления объявлений (${ countGoods }/${ maxGoods }). Удалите объявление, либо приобретите расширенный доступ, чтобы выставлять на продажу неограниченное количество товаров`,
-					keyboard: keyboard(menuMarkup)	
-				})
-
-
-			ctx.scene.state.size = null
-
-			if (ctx.scene.step.firstTime || !ctx.text)
-				return ctx.send({
-					message:
-						'❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nШаблон: stockx.com/*',
-					keyboard: keyboard(menuMarkup),
-				})
+				if (countGoods >= maxGoods && extendedAccess == false)
+					return ctx.send({
+						message: `❗ Вы превысили лимит выставления объявлений (${ countGoods }/${ maxGoods }). Удалите объявление, либо приобретите расширенный доступ, чтобы выставлять на продажу неограниченное количество товаров`,
+						keyboard: keyboard(menuMarkup)	
+					})
 
 
-			ctx.scene.state.link = convertURL(ctx.text)
-			ctx.scene.state.good = await getGoodFromStockx(ctx.scene.state.link)
+				ctx.scene.state.size = null
 
-			if (ctx.scene.state.good) ctx.scene.step.next()
-			else
-				ctx.send({
-					message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
-					keyboard: keyboard(menuMarkup)
-				})
+				if (ctx.scene.step.firstTime || !ctx.text)
+					return ctx.send({
+						message:
+							'❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nШаблон: stockx.com/*',
+						keyboard: keyboard(menuMarkup),
+					})
+
+
+				ctx.scene.state.link = convertURL(ctx.text)
+				ctx.scene.state.good = await getGoodFromStockx(ctx.scene.state.link)
+
+				if (ctx.scene.state.good) ctx.scene.step.next()
+				else
+					ctx.send({
+						message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
+						keyboard: keyboard(menuMarkup)
+					})
+			} catch (e) {
+				console.log(e)
+				ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+				return ctx.scene.leave()
+			}
 		},
 		// Уточнение у пользователя
 		async ctx => {
@@ -152,6 +158,12 @@ const profileScene = [
 			if (patternNumber.test(ctx.text) == false)
 				return ctx.send('❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✔️ 10000')
 
+			if (+ctx.text > 10000000)
+				return ctx.send('❗ Максимальная стоимость товара 10000000руб.')
+
+			if (+ctx.text < 1)
+				return ctx.send('❗ Минимальная стоимость товара 1руб.')
+
 			ctx.scene.state.price = ctx.text
 			ctx.scene.step.next()
 		},
@@ -170,6 +182,9 @@ const profileScene = [
 			if (ctx.text == 'Назад') {
 				return ctx.scene.step.go(3)
 			}
+
+			if (ctx.text.length > 20)
+				return ctx.send('❗ Название города слишком длинное')
 
 			ctx.scene.state.city = ctx.text
 
@@ -233,8 +248,8 @@ const profileScene = [
 					ctx.scene.step.next()					
 				} catch (e) {
 					console.log(e)
-					ctx.send('❗ Произошла какая-то ошибка при сохранении товара, обратитесь к администратору')
-					ctx.scene.leave()
+					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
 				}
 			}
 

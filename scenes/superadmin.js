@@ -12,6 +12,7 @@ import baseSendMessage from '../baseSendMessage.js'
 import previousMarkup from '../markup/previousMarkup.js'
 
 import convertDate from '../utils/convertDate.js'
+import { resetSearchInfo } from '../utils/updateSearchInfo.js'
 
 const superadminScene = [
 	new StepScene('superadmin', [
@@ -26,9 +27,20 @@ const superadminScene = [
 
                 let sendString = `❗ Последние действия администраторов: \n\n`
 
-                sendString += `Удаление всех товаров пользователя:\n ${deleteGoods?.adminName} (ID ${deleteGoods?.adminID}), ${convertDate(deleteGoods?.dateOfAction)}\nID пользователя: ${deleteGoods?.userID} (vk.com/id${deleteGoods?.userID})\n\n`
-                sendString += `Выдача расширенного доступа:\n ${giveExtened?.adminName} (ID ${giveExtened?.adminID}), ${convertDate(giveExtened?.dateOfAction)}\nID пользователя: ${giveExtened?.userID} (vk.com/id${giveExtened?.userID})\n\n`
-                sendString += `Удаление расширенного доступа:\n ${takeExtened?.adminName} (ID ${takeExtened?.adminID}), ${convertDate(takeExtened?.dateOfAction)}\nID пользователя: ${takeExtened?.userID} (vk.com/id${takeExtened?.userID})\n\n`
+                if (deleteGoods?.adminName)
+                    sendString += `Удаление всех товаров пользователя:\n ${deleteGoods?.adminName} (ID ${deleteGoods?.adminID}), ${convertDate(deleteGoods?.dateOfAction)}\nID пользователя: ${deleteGoods?.userID} (vk.com/id${deleteGoods?.userID})\n\n`
+                else
+                    sendString += `Удаление всех товаров пользователя: Запись отсутствует\n\n`
+
+                if (giveExtened?.adminName)
+                    sendString += `Выдача расширенного доступа:\n ${giveExtened?.adminName} (ID ${giveExtened?.adminID}), ${convertDate(giveExtened?.dateOfAction)}\nID пользователя: ${giveExtened?.userID} (vk.com/id${giveExtened?.userID})\n\n`
+                else
+                    sendString += `Выдача расширенного доступа: Запись отсутствует\n\n`
+
+                if (takeExtened?.adminName)
+                    sendString += `Удаление расширенного доступа:\n ${takeExtened?.adminName} (ID ${takeExtened?.adminID}), ${convertDate(takeExtened?.dateOfAction)}\nID пользователя: ${takeExtened?.userID} (vk.com/id${takeExtened?.userID})\n\n`
+                else
+                    sendString += `Удаление расширенного доступа: Запись отсутствует\n\n`
 
                 sendString += '❗ Панель настроек чат-бота, выберите пункт для изменения параметров чат-бота'
 
@@ -54,6 +66,7 @@ const superadminScene = [
                 return ctx.scene.step.go(3)
 		},
 
+        // Время отката
         async ctx => {
             if (ctx.scene.step.firstTime || !ctx.text)
                 return ctx.send({
@@ -71,6 +84,9 @@ const superadminScene = [
 
             try {
                 await BotConfig.updateOne({}, { cooldownSearch: +ctx.text * 1000 * 60 })
+
+                await resetSearchInfo('*')
+
                 ctx.send('❗ Время отката для поиска успешно изменено')
                 return ctx.scene.step.go(0)
             } catch (e) {
@@ -79,6 +95,8 @@ const superadminScene = [
                 ctx.scene.leave()
             }
         },
+
+        // Максимальное кол-во поисков'
         async ctx => {
             if (ctx.scene.step.firstTime || !ctx.text)
                 return ctx.send({
@@ -89,13 +107,13 @@ const superadminScene = [
             if (ctx.text == 'Назад')
                 return ctx.scene.step.go(0)
 
-            // Находится ли в строке только цифры?
 			const patternNumber = /^\d+$/
 			if (patternNumber.test(ctx.text) == false)
 				return ctx.send('❗ Укажите количество поисков в прафильном формате:\n\n❌ 10 поисков \n✔️ 10')
 
             try {
                 await BotConfig.updateOne({}, { maxSearch: +ctx.text })
+
                 ctx.send('❗ Количество бесплатных поисков успешно изменено')
                 return ctx.scene.step.go(0)
             } catch (e) {
@@ -104,6 +122,8 @@ const superadminScene = [
                 ctx.scene.leave()
             }
         },
+
+        // Максимальное кол-во товаров'
         async ctx => {
             if (ctx.scene.step.firstTime || !ctx.text)
                 return ctx.send({

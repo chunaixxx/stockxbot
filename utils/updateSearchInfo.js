@@ -25,15 +25,27 @@ export const resetSearchInfo = async userId => {
 	let result = null
 
 	try {
-		result = await User.updateOne(
-			{ userId },
-			{
-				$set: {
-					'searchInfo.lastSearch': null,
-					'searchInfo.count': 0,
-				},
-			}
-		)
+		if (userId == '*') {
+			result = await User.updateMany(
+				{ },
+				{
+					$set: {
+						'searchInfo.lastSearch': null,
+						'searchInfo.count': 0,
+					},
+				}
+			)
+		} else {
+			result = await User.updateOne(
+				{ userId },
+				{
+					$set: {
+						'searchInfo.lastSearch': null,
+						'searchInfo.count': 0,
+					},
+				}
+			)
+		}
 	} catch (e) {
 		console.log(e)
 		result = null
