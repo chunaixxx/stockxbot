@@ -13,6 +13,7 @@ import searchScene from './scenes/search.js'
 import sellScene from './scenes/sell.js'
 import profileScene from './scenes/profile.js'
 import adminScene from './scenes/admin.js'
+import superadminScene from './scenes/superadmin.js'
 
 import getUserName from './utils/getUserName.js'
 import { resetSearchInfo } from './utils/updateSearchInfo.js'
@@ -36,5 +37,6 @@ sceneManager.addScenes(searchScene)
 sceneManager.addScenes(sellScene)
 sceneManager.addScenes(profileScene)
 sceneManager.addScenes(adminScene)
+sceneManager.addScenes(superadminScene)
 
 vk.updates.startPolling()

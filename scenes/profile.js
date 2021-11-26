@@ -1,6 +1,7 @@
 import '../mongodb.js'
 import Good from '../models/Good.js'
 import User from '../models/User.js'
+import BotConfig from '../models/BotConfig.js'
 
 import vk from '../commonVK.js'
 import { StepScene } from '@vk-io/scenes'
@@ -27,21 +28,15 @@ const myAds = [
 				const goods = await Good.find({ sellerId: ctx.senderId }).exec()
 				ctx.scene.state.goods = goods
 
-				if (goods.length === 0) {
-					ctx.send({
-						message: '❗ У вас отсутствуют объявления. Попробуйте создать его с помощью кнопки — Продать',
-						keyboard: keyboard(baseMarkup),
-					})
-					return ctx.scene.leave()
-				}
+				const botConfig = (await BotConfig.findOne())
 
 				const countGoods = goods.length
-				const leftGoods = process.env.MAX_GOODS - countGoods
+				const leftGoods = botConfig.maxGoods - countGoods
 
 				const user = await User.findOne({ userId: ctx.senderId }).exec()
 
 				const countSearch = user.searchInfo.count
-				const leftSearch = process.env.MAX_SEARCH - user.searchInfo.count
+				const leftSearch = botConfig.maxSearch - user.searchInfo.count
 				const extendedAccess = user.extendedAccess
 
 				const lastSearch = user.searchInfo.lastSearch
@@ -54,22 +49,28 @@ const myAds = [
 					sendString += `❗ Вам снова доступно 3 новых поиска!\n\n`
 				}
 
-				
-
 				if (extendedAccess) {
 					sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ∞)\nПоисков: ${ countSearch } (осталось ∞)\nВы имеете расширенный доступ в котором нет ограничений\n\n`
 				} else {
-					sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\nДля снятия ограничений — оформите расширенный доступ\n\n`
+					sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\n\n❗ Для снятия ограничений — оформите расширенный доступ\n\n`
+				}
+
+				if (goods.length === 0) {
+					ctx.send({
+						message: sendString + '❗ У вас отсутствуют объявления. Попробуйте создать их с помощью кнопки — Продать',
+						keyboard: keyboard(baseMarkup),
+					})
+					return ctx.scene.leave()
 				}
 
 				sendString += '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактитровать или удалить объявление\n\n'
 				goods.forEach((item, index) => {
-					const { goodName, size, price, city } = item
+					const { goodName, size, price, city, views } = item
 
 					if (size)
-						sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city}\n\n`
+						sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | ${views} показов\n\n`
 					else
-						sendString += `[${index}] ${goodName}\n${price}руб. | ${city}\n\n`
+						sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | ${views} показов\n\n`
 				})
 
 				ctx.scene.state.isDelete = false
@@ -130,6 +131,13 @@ const myAds = [
 			if (ctx.text == 'Удалить') {
 				try {
 					await Good.deleteOne({ _id: ctx.scene.state.selectedGood._id })
+
+					await BotConfig.updateOne(
+						{
+							$inc: { 'stats.countDelete': 1 }
+						}
+					)
+
 					// Если товар был один
 					if (ctx.scene.state.goods.length == 1) {
 						ctx.send({

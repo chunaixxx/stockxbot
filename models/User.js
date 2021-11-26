@@ -22,6 +22,11 @@ const goodSchema = new Schema({
 		default: false
 	},
 
+	settingsAccess: { 
+		type: Boolean, 
+		default: false
+	},
+
 	searchInfo: {
 		count: {
 			type: Number,

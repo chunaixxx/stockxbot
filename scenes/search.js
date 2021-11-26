@@ -1,6 +1,7 @@
 import '../mongodb.js'
 import Good from '../models/Good.js'
 import User from '../models/User.js'
+import BotConfig from '../models/BotConfig.js'
 
 import vk from '../commonVK.js'
 import { StepScene } from '@vk-io/scenes'
@@ -21,6 +22,7 @@ import generateImage from '../utils/generateImage.js'
 import convertURL from '../utils/convertURL.js'
 import sortGoodsByPrice from '../utils/sortGoodsByPrice.js'
 import { incrementSearch, resetSearchInfo } from '../utils/updateSearchInfo.js'
+import convertDate from '../utils/convertDate.js'
 
 const searchScene = [
 	new StepScene('search', [
@@ -32,21 +34,24 @@ const searchScene = [
 
 			try {
 				const user = await User.findOne({ userId: ctx.senderId })
-				
+
 				const countSearch = user.searchInfo.count
 				const lastSearch = user.searchInfo.lastSearch
-				const maxCountSearch = process.env.MAX_GOODS
+				const maxCountSearch = (await BotConfig.findOne()).maxSearch
 				const extendedAccess = user.extendedAccess
-
+				
 				// const msMounth = 1000 * 60 * 60 * 24 * 30
-				const cooldownSearch = process.env.COOLDOWN_SEARCH
+				const botConfig = await BotConfig.findOne()
+				const cooldownSearch = botConfig.cooldownSearch
 
 				if (countSearch >= maxCountSearch && extendedAccess == false ) {
 					if (Date.now() - lastSearch.getTime() >= cooldownSearch) {
 						await resetSearchInfo(ctx.senderId)
 					} else {
+						const leftTime = convertDate(+cooldownSearch + +lastSearch.getTime())
+
 						ctx.send({
-							message: `❗ Вы превысили лимит поисков (${ countSearch }/${ maxCountSearch }). Следующие ${ maxCountSearch } поиска будут доступны ровно через месяц. Оформите расширенный доступ для неограниченного количества поисков`,
+							message: `❗ Вы превысили лимит поисков (${ countSearch }/${ maxCountSearch }). Следующие ${ maxCountSearch } поиска будут доступны ${ leftTime }. Оформите расширенный доступ для неограниченного количества поисков`,
 							keyboard: keyboard(menuMarkup)	
 						})
 						return ctx.scene.leave()
@@ -223,6 +228,13 @@ const searchScene = [
 						message: `❗ Товар "${goodName}" никто не продает на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`,
 					})
 				}
+
+				await BotConfig.updateOne(
+					{
+						$inc: { 'stats.countSearch': 1 }
+					}
+				)
+
 				return ctx.scene.step.go(0)
 			}
 
@@ -252,8 +264,10 @@ const searchScene = [
 				if (searchedGoods.length) {
 					let sendString = `❗ По твоему запросу "${ ctx.scene.state.query }" найдены такие объявления:\n\n`
 		
-					searchedGoods.forEach((item, index) => {
-						const { sellerName, sellerId, city, goodName, size, price} = item
+					searchedGoods.forEach(async (item, index) => {
+						const { sellerName, sellerId, city, goodName, size, price, _id} = item;
+
+						await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
 		
 						if (size)
 							sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | \nРазмер: ${ size }, Цена: ${ price }руб.\n\n`
@@ -269,6 +283,13 @@ const searchScene = [
 						message: `❗ К сожалению, по вашему запросу ${ctx.scene.state.query} ничего не найдено на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`, 
 					})
 				}
+
+				await BotConfig.updateOne(
+					{
+						$inc: { 'stats.countSearch': 1 }
+					}
+				)
+
 				return ctx.scene.step.go(0)
 			}
 		},

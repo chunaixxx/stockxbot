@@ -1,5 +1,7 @@
 import '../mongodb.js'
 import Good from '../models/Good.js'
+import User from '../models/User.js'
+import BotConfig from '../models/BotConfig.js'
 
 import vk from '../commonVK.js'
 import { StepScene } from '@vk-io/scenes'
@@ -23,6 +25,25 @@ const profileScene = [
 	new StepScene('sell', [
 		// Обработка ссылки
 		async ctx => {
+			if (ctx.text == 'Меню') {
+				baseSendMessage(ctx)
+				return ctx.scene.leave()
+			}
+
+			const goodsOfUser = await Good.find({ sellerId: ctx.senderId })
+			const user = await User.findOne({ userId: ctx.senderId })
+
+			const countGoods = goodsOfUser.length
+			const maxGoods = (await BotConfig.findOne()).maxGoods
+			const extendedAccess = user.extendedAccess
+
+			if (countGoods >= maxGoods && extendedAccess == false)
+				return ctx.send({
+					message: `❗ Вы превысили лимит выставления объявлений (${ countGoods }/${ maxGoods }). Удалите объявление, либо приобретите расширенный доступ, чтобы выставлять на продажу неограниченное количество товаров`,
+					keyboard: keyboard(menuMarkup)	
+				})
+
+
 			ctx.scene.state.size = null
 
 			if (ctx.scene.step.firstTime || !ctx.text)
@@ -32,10 +53,6 @@ const profileScene = [
 					keyboard: keyboard(menuMarkup),
 				})
 
-			if (ctx.text == 'Меню') {
-				baseSendMessage(ctx)
-				return ctx.scene.leave()
-			}
 
 			ctx.scene.state.link = convertURL(ctx.text)
 			ctx.scene.state.good = await getGoodFromStockx(ctx.scene.state.link)
@@ -133,7 +150,7 @@ const profileScene = [
 			// Находится ли в строке только цифры?
 			const patternNumber = /^\d+$/
 			if (patternNumber.test(ctx.text) == false)
-				return ctx.send('Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✔️ 10000')
+				return ctx.send('❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✔️ 10000')
 
 			ctx.scene.state.price = ctx.text
 			ctx.scene.step.next()
@@ -201,16 +218,22 @@ const profileScene = [
 					const good = new Good(goodObj)
 	
 					await good.save()
+
+					await BotConfig.updateOne(
+						{
+							$inc: { 'stats.countGoods': 1 }
+						}
+					)
 	
 					ctx.send({
-						message: '❗ Товар успешно добавлен. Ты можешь увидеть свое объявление в пункте — Мои объявления',
+						message: '❗ Товар успешно добавлен. Ты можешь увидеть свое объявление в пункте — Профиль',
 						keyboard: keyboard(baseMarkup),
 					})
 	
 					ctx.scene.step.next()					
 				} catch (e) {
 					console.log(e)
-					ctx.send('Произошла какая-то ошибка при сохранении товара')
+					ctx.send('❗ Произошла какая-то ошибка при сохранении товара, обратитесь к администратору')
 					ctx.scene.leave()
 				}
 			}

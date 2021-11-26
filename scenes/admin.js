@@ -11,6 +11,10 @@ import menuMarkup from '../markup/menuMarkup.js'
 import { resetSearchInfo } from '../utils/updateSearchInfo.js'
 
 import User from '../models/User.js'
+import Good from '../models/Good.js'
+import BotConfig from '../models/BotConfig.js'
+
+import logAdminActions from '../utils/logAdminActions.js'
 
 const adminScene = [
 	new StepScene('admin', [
@@ -39,6 +43,12 @@ const adminScene = [
             
             if (ctx.text == 'Снять администратора')
                 action = 'Снять администратора'
+
+            if (ctx.text == 'Удалить объявления пользователя')
+                action = 'Удалить объявления пользователя'
+
+            if (ctx.text == 'Статистика')
+                return ctx.scene.step.go(7)
 
             if (action) {
                 ctx.scene.state.action = action
@@ -73,6 +83,8 @@ const adminScene = [
                             break;
                         case 'Снять администратора':
                             return ctx.scene.step.go(5)
+                        case 'Удалить объявления пользователя':
+                            return ctx.scene.step.go(6)
                     }
                     
                     ctx.scene.step.go(2)
@@ -103,6 +115,8 @@ const adminScene = [
                 return ctx.scene.step.go(0)
             } else {
                 try {
+                    await logAdminActions(ctx.senderId, 'giveExtendedAccess', selectedUser.userId)
+
                     await User.updateOne({ _id: selectedUser._id}, { $set: { extendedAccess: true } })
                     ctx.send('❗ Пользователю успешно выдан расширенный доступ')
                     return ctx.scene.step.go(0)
@@ -125,6 +139,8 @@ const adminScene = [
 
             if (selectedUser.extendedAccess) {
                 try {
+                    await logAdminActions(ctx.senderId, 'takeExtendedAccess', selectedUser.userId)
+
                     await User.updateOne({ _id: selectedUser._id}, { $set: { extendedAccess: false } })
                     await resetSearchInfo(ctx.senderId)
                     ctx.send('❗ У пользователя снят расширенный доступ')
@@ -196,6 +212,44 @@ const adminScene = [
                 ctx.send('❗ У пользователя нет полномочий администратора')
                 return ctx.scene.step.go(0)
             }
+        },
+
+        // Удалить объявления пользователя
+        async ctx => {
+            if (ctx.text == 'Назад')
+                return ctx.scene.step.go(0)
+
+            const selectedUser = ctx.scene.state.selectedUser
+            
+            try {
+                await logAdminActions(ctx.senderId, 'deleteAllGoods', selectedUser.userId)
+                await Good.deleteMany({ sellerId: selectedUser.userId }), 
+                ctx.send('❗ У пользователя удалены все объявления')
+                return ctx.scene.step.go(0)
+            } catch (e) {
+                console.log(e)
+                return ctx.send({
+                    message: '❗ Произошла какая-то ошибка, обратитесь к главному администратору',
+                    keyboard: keyboard(previousMarkup)
+                })
+            }
+        },
+
+        // Статистика
+        async ctx => {
+            if (ctx.text == 'Назад')
+                return ctx.scene.step.go(0)
+
+            const goodsActiveCount = (await Good.find()).length
+            const usersCount = (await User.find()).length
+            const otherStats = await BotConfig.findOne()
+
+            let sendString = `❗ Общая статистика:\n\nПоиски: ${otherStats.stats.countSearch} (${otherStats.stats.countFoundSearch} из них найденых)\nУдаленные товары: ${otherStats.stats.countDelete}\nВсего товаров: ${otherStats.stats.countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}`
+
+            return ctx.send({
+                message: sendString,
+                keyboard: keyboard(previousMarkup)
+            })
         },
 	])	
 ]

@@ -1,7 +1,7 @@
 import keyboard from './markup/keyboard.js'
 
 import { baseMarkup, baseMarkupNotFaq } from './markup/baseMarkup.js'
-import { adminMarkup } from './markup/adminMarkup.js'
+import { adminMarkup, settingsMarkup } from './markup/adminMarkup.js'
 
 import getUserName from './utils/getUserName.js'
 import User from './models/User.js'
@@ -26,13 +26,28 @@ export default async ctx => {
         ctx.state.user = foundUser
     }
 
-	const isAdmin = ctx.state?.user?.adminAccess
+	const settingsAccess = ctx.state?.user?.settingsAccess
+	const adminAccess = ctx.state?.user?.adminAccess
 
-	const faqMarkup = isAdmin ? keyboard([...baseMarkupNotFaq, ...adminMarkup]) : keyboard(baseMarkupNotFaq)
-	const menuMarkup = isAdmin ? keyboard([...baseMarkup, ...adminMarkup]) : keyboard(baseMarkup)
+	const markup = []
 
-	if (ctx.text == 'Управление' && isAdmin)
-		return ctx.scene.enter('admin')
+	switch (true) {
+		case settingsAccess:
+			markup.push(...settingsMarkup)
+		case adminAccess:
+			markup.push(...adminMarkup)
+		default:
+			markup.push(...baseMarkup)
+	}
+
+	
+	if (ctx.text == 'Cупер-админ' && settingsAccess)
+		return ctx.scene.enter('superadmin')
+
+	if (ctx.text == 'Управление')
+		if (adminAccess || settingsAccess)
+			return ctx.scene.enter('admin')
+
 
     switch (ctx.text) {
 		case 'Купить':
@@ -47,19 +62,25 @@ export default async ctx => {
 		case 'FAQ':
 			ctx.send({
 				message: `Привет, это SEARCH_V1 — чат-бот, помогающий людям найти или продать лимитированную одежду/кроссовки/аксессуары. \n• Если у тебя возникли какие-то проблемы, ты нашёл недочёт или у тебя есть какое-то предложение, напиши https://vk.com/impossiblelevel (https://vk.com/impossiblelevell)\n• Если у тебя не получается разобраться в работе с ботом, глянь этот пост (вставим ссылку)`,
-				keyboard: faqMarkup
+				keyboard: keyboard(markup)
 			})
 			break;
 		case 'Меню':
 			ctx.send({
 				message: `Привет. Это SEARCH_V1 — Чат-бот, помогающий людям найти или продать лимитированную одежду/кроссовки/аксессуары. Что хочешь сделать?`,
-				keyboard: menuMarkup
+				keyboard: keyboard(markup)
+			})
+			break;
+		case 'Начать':
+			ctx.send({
+				message: `Привет. Это SEARCH_V1 — Чат-бот, помогающий людям найти или продать лимитированную одежду/кроссовки/аксессуары. Что хочешь сделать?`,
+				keyboard: keyboard(markup)
 			})
 			break;
 		default:
 			ctx.send({
 				message: `❗ Неизвестная команда. Выберите команду, нажав на кнопку`,
-				keyboard: menuMarkup
+				keyboard: keyboard(markup)
 			})
 	}	
 }
