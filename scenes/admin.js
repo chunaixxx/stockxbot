@@ -24,13 +24,22 @@ const adminScene = [
                     message: 'Панель администратора',
                     keyboard: keyboard([...adminMenuMarkup, ...menuMarkup])
                 })
-            
+
+            let admin = null
             let action = null
 
 			if (ctx.text == 'Меню') {
 				baseSendMessage(ctx)
 				return ctx.scene.leave()
 			}
+
+            try {
+                admin = await User.findOne({ userId: ctx.senderId }).exec()
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                return ctx.scene.leave()
+            }
             
             if (ctx.text == 'Выдать расширенный доступ')
                 action = 'Выдать расширенный доступ'
@@ -39,10 +48,16 @@ const adminScene = [
                 action = 'Забрать расширенный доступ'
             
             if (ctx.text == 'Назначить администратора')
-                action = 'Назначить администратора'
+                if (admin.settingsAccess)
+                    action = 'Назначить администратора'
+                else
+                    ctx.send('❗ Нет доступа')
             
             if (ctx.text == 'Снять администратора')
-                action = 'Снять администратора'
+                if (admin.settingsAccess)
+                    action = 'Снять администратора'
+                else
+                    ctx.send('❗ Нет доступа')
 
             if (ctx.text == 'Удалить объявления пользователя')
                 action = 'Удалить объявления пользователя'
@@ -138,7 +153,7 @@ const adminScene = [
                     await logAdminActions(ctx.senderId, 'takeExtendedAccess', selectedUser.userId)
 
                     await User.updateOne({ _id: selectedUser._id}, { $set: { extendedAccess: false } })
-                    await resetSearchInfo(ctx.senderId)
+                    await resetSearchInfo(selectedUser.userId)
                     ctx.send('❗ У пользователя снят расширенный доступ')
                     return ctx.scene.step.go(0)
                 } catch (e) {
