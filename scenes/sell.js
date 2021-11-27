@@ -228,8 +228,6 @@ const profileScene = [
 						city
 					}
 
-					console.log()
-
 					const good = new Good(goodObj)
 	
 					await good.save()

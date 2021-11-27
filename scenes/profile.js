@@ -173,8 +173,6 @@ const myAds = [
 		},
 		// Размер
 		async ctx => {
-			console.log(ctx.scene.state.selectedGood)
-
 			if (!ctx.scene.state.selectedGood.size)
 				return ctx.scene.step.next()
 
