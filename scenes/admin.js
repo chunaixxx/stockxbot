@@ -152,7 +152,12 @@ const adminScene = [
                 try {
                     await logAdminActions(ctx.senderId, 'takeExtendedAccess', selectedUser.userId)
 
-                    await User.updateOne({ _id: selectedUser._id}, { $set: { extendedAccess: false } })
+                    await User.updateOne({ _id: selectedUser._id}, { $set: { 
+                        extendedAccess: false, 
+                        'searchInfo.count': 0,
+                        'searchInfo.lastSearch': null
+                    }})
+                    
                     await resetSearchInfo(selectedUser.userId)
                     ctx.send('❗ У пользователя снят расширенный доступ')
                     return ctx.scene.step.go(0)
