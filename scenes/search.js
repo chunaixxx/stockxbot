@@ -212,8 +212,10 @@ const searchScene = [
 					
 					if (searchedGoods.length) {
 						let sendString = `❗ По твоему запросу "${goodName}" найдены такие объявления:\n\n`
-						searchedGoods.forEach((item, index) => {
-							const { sellerName, sellerId, city, size, price} = item
+						searchedGoods.forEach(async (item, index) => {
+							const { sellerName, sellerId, city, size, price, _id} = item;
+
+							await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
 			
 							if (size)
 								sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nРазмер: ${size}, Цена: ${price}руб.\n\n`

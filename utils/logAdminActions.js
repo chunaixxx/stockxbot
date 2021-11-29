@@ -11,8 +11,6 @@ const logAdminActions = async (id, action, userID) => {
         const dateOfAction = Date.now()
         const adminID = id
     
-        console.log()
-    
         const newAction = {} 
         newAction[`lastAdminActions.${action}`] = {
             adminName: `${ firstname } ${ lastname }`,
