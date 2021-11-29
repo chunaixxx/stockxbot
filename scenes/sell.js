@@ -127,12 +127,12 @@ const profileScene = [
 					return ctx.scene.step.go(0)
 				}
 
-				if (!sizes.includes(ctx.text)) {
+				if (!sizes.includes(ctx.text.toUpperCase())) {
 					ctx.send(
 						'❗ Выбранного вами размера не существует. Пожалуйста напишите размер предложенный из списка выше'
 					)
 				} else {
-					ctx.scene.state.size = ctx.text
+					ctx.scene.state.size = ctx.text.toUpperCase()
 					ctx.scene.step.next()
 				}
 			} else

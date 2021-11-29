@@ -145,7 +145,7 @@ const searchScene = [
 				if (ctx.text == 'Пропустить')
 					return ctx.scene.step.next()
 	
-				const range = ctx.text.split(' ')
+				const range = ctx.text.toUpperCase().split(' ')
 				ctx.scene.state.sizeRange = range
 	
 				return ctx.scene.step.next()
