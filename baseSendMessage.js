@@ -1,3 +1,5 @@
+import vk from './commonVK.js'
+
 import keyboard from './markup/keyboard.js'
 
 import { baseMarkup, baseMarkupNotFaq } from './markup/baseMarkup.js'
@@ -8,6 +10,16 @@ import User from './models/User.js'
 
 export default async ctx => {
 	if (ctx.senderId <= 0) return
+
+	if (process.env.ONLY_SUBSCRIBER == 'true') {
+		const isSubscriber = await vk.api.groups.isMember({ 
+			group_id: process.env.GROUP_ID, 
+			user_id: ctx.senderId 
+		})
+	
+		if (isSubscriber == false)
+			return ctx.send('❗ Пользоваться услугами чат-бота могут только подписчики нашей закрытой группы')
+	}
 
 	try {
 		const foundUser = await User.findOne({ userId: ctx.senderId }).exec()
