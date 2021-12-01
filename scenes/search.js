@@ -138,7 +138,7 @@ const searchScene = [
 				if (ctx.scene.step.firstTime || !ctx.text)
 					return ctx.send({
 						message:
-							'❗ Использовать фильтрацию по размеру? Если да, то перечислите через пробел нужные размеры.\n\nПримеры: 8 8,5 5W 4K M 7Y XXL',
+							'❗️ Использовать фильтрацию по размеру? Если да, то перечислите через пробел нужные размеры.\n\nПримеры: 8 8,5 9,5W 10W 4K 4C 6Y M L',
 						keyboard: keyboard(skipMarkup),
 					})
 	
