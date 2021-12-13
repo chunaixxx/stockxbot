@@ -64,7 +64,13 @@ const myAds = [
 						return ctx.scene.leave()
 					}
 
-					sendString += '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n'
+                    ctx.send(sendString)
+
+                    sendString = ''
+                    let counter = 0;
+
+                    const pages = []
+
 					goods.forEach((item, index) => {
 						const { goodName, size, price, city, views } = item
 
@@ -72,16 +78,29 @@ const myAds = [
 							sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | ${views} показов\n\n`
 						else
 							sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | ${views} показов\n\n`
+
+                        counter += 1
+
+                        if (counter >= 20 || goods.length - 1 == index) {
+                            pages.push(sendString)
+                            sendString = ''
+                            counter = 0
+                        }
 					})
+
+                    for (const page of pages)
+                        ctx.send(page)
+
+                    ctx.send({
+                        message: '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактировать или удалить объявление',
+                        keyboard: keyboard(menuMarkup),
+                    })
 
 					ctx.scene.state.isDelete = false
 					ctx.scene.state.selectedGood = null
 					ctx.scene.state.newGood = null
 
-					return ctx.send({
-						message: sendString,
-						keyboard: keyboard(menuMarkup),
-					})
+					return 
 				} catch (e) {
 					console.log(e)
 					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')

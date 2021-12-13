@@ -8,7 +8,13 @@ const answerMarkup = [
         Keyboard.textButton({
             label: 'Ссылка',
             color: 'positive',
-        })
+        }),
+        [
+            Keyboard.textButton({
+                label: 'Поиск скидки',
+                color: 'positive',
+            }),
+        ],
 ]
 
 export default answerMarkup

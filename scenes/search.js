@@ -32,6 +32,13 @@ const searchScene = [
 				return ctx.scene.leave()
 			}
 
+            if (ctx.text == 'Поиск скидки') {
+                return ctx.send({
+                    message: `Очень рады что тебя заинтересовали наши скидки! Мы делаем скидку в таких магазинах как:\n\nLamoda -25%\nLeform 35-40%\nAsos до 40%\nFarfetch до 20%\nStreet Beat до 40%\nBrandshop 15%\n\nЧтобы узнать подробности и заказать жми https://vk.com/eileonov`,
+                    keyboard: keyboard([...methodSearch, ...menuMarkup])
+                })
+            }
+
 			try {
 				const user = await User.findOne({ userId: ctx.senderId })
 
@@ -210,22 +217,49 @@ const searchScene = [
 					const searchedGoods = ctx.scene.state.searchedGoods
 					const goodName = ctx.scene.state.goodName
 					
+
+
 					if (searchedGoods.length) {
-						let sendString = `❗ По твоему запросу "${goodName}" найдены такие объявления:\n\n`
-						searchedGoods.forEach(async (item, index) => {
-							const { sellerName, sellerId, city, size, price, _id} = item;
+                        try {
+                            ctx.send(`❗ По твоему запросу "${goodName}" найдены такие объявления:`)
 
-							await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
-			
-							if (size)
-								sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nРазмер: ${size}, Цена: ${price}руб.\n\n`
-							else
-								sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
-						})
+                            let sendString = ''
+                            let counter = 0;
+        
+                            const pages = []
 
-						await incrementSearch(ctx.senderId)
+                            searchedGoods.forEach((item, index) => {
+                                const { sellerName, sellerId, city, size, price, _id} = item;
+                
+                                if (size)
+                                    sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nРазмер: ${size}, Цена: ${price}руб.\n\n`
+                                else
+                                    sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
 
-						ctx.send(sendString)
+                                counter += 1
+
+                                if (counter >= 20 || searchedGoods.length - 1 == index) {
+                                    pages.push(sendString)
+                                    sendString = ''
+                                    counter = 0
+                                }
+                            })
+
+                            searchedGoods.forEach(async item => {
+                                const { _id} = item;
+                                await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
+                            })
+
+        
+                            for (const page of pages)
+                                await ctx.send(page)
+
+                            await incrementSearch(ctx.senderId)
+                        } catch (e) {
+                            console.log(e)
+                            ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                            return ctx.scene.leave()
+                        }
 					} else {
 						ctx.send({
 							message: `❗ Товар "${goodName}" никто не продает на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`,
@@ -271,22 +305,45 @@ const searchScene = [
 					const searchedGoods = ctx.scene.state.searchedGoods
 					
 					if (searchedGoods.length) {
-						let sendString = `❗ По твоему запросу "${ ctx.scene.state.query }" найдены такие объявления:\n\n`
-			
-						searchedGoods.forEach(async (item, index) => {
-							const { sellerName, sellerId, city, goodName, size, price, _id} = item;
+                        try {
+                            ctx.send(`❗ По твоему запросу "${ ctx.scene.state.query }" найдены такие объявления:\n\n`)
+                
+                            let sendString = ''
+                            let counter = 0;
+        
+                            const pages = []
 
-							await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
-			
-							if (size)
-								sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | \nРазмер: ${ size }, Цена: ${ price }руб.\n\n`
-							else
-								sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | Цена: ${ price }руб.\n\n`
-						})
+                            searchedGoods.forEach((item, index) => {
+                                const { sellerName, sellerId, city, goodName, size, price, _id} = item;
+                
+                                if (size)
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | \nРазмер: ${ size }, Цена: ${ price }руб.\n\n`
+                                else
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | Цена: ${ price }руб.\n\n`
 
-						await incrementSearch(ctx.senderId)
-		
-						ctx.send(sendString)
+                                counter += 1
+
+                                if (counter >= 20 || searchedGoods.length - 1 == index) {
+                                    pages.push(sendString)
+                                    sendString = ''
+                                    counter = 0
+                                }
+                            })
+
+                            searchedGoods.forEach(async item => {
+                                const { _id} = item;
+                                await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
+                            })
+
+                            for (const page of pages)
+                                await ctx.send(page)
+
+                            await incrementSearch(ctx.senderId)
+                        } catch (e) {
+                            console.log(e)
+                            ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                            return ctx.scene.leave()
+                        }
 					} else {
 						ctx.send({
 							message: `❗ К сожалению, по вашему запросу ${ctx.scene.state.query} ничего не найдено на нашей площадке. Попробуй воспользоваться поиском по названию или укажите другой размер.`, 
