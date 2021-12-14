@@ -80,27 +80,15 @@ const profileScene = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
-					const { imgUrl, filename } = ctx.scene.state.good
+					const { imgUrl } = ctx.scene.state.good
 					const goodName = ctx.scene.state.good.name
-					const imgPath = path.resolve(__dirname, `../images/${filename}.jpg`)
 
-					await generateImage(imgUrl, filename)
-					ctx.scene.state.imgPath = imgPath
-
-                    console.log(ctx.scene.state.good);
-
-					const attachment = await vk.upload.messagePhoto({
-						peer_id: ctx.peerId,
-						source: {
-							value: imgPath,
-						},
-					})
-
-					ctx.scene.state.attachment = attachment
+                    ctx.sendPhotos({
+                        value: imgUrl
+                    })
 
 					ctx.send({
 						message: `❗ Мы нашли твой товар?\n\n${goodName}`,
-						attachment,
 						keyboard: keyboard(answerMarkup),
 					})
 				} catch (e) {
@@ -203,6 +191,7 @@ const profileScene = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				const sizes = ctx.scene.state.good.allSizes
+                const { imgUrl } = ctx.scene.state.good
 				let message = ``
 
 				if (sizes) 
@@ -213,8 +202,11 @@ const profileScene = [
 				ctx.send({
 					message,
 					keyboard: keyboard(answerMarkup),
-					attachment: ctx.scene.state.attachment ,
 				})
+
+                ctx.sendPhotos({
+                    value: imgUrl
+                })
 			}
 
 			if (ctx.text == 'Да') {
