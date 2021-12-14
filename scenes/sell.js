@@ -17,6 +17,8 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+import fs from 'fs'
+
 import answerMarkup from '../markup/answerMarkup.js'
 import { baseMarkup } from '../markup/baseMarkup.js'
 import menuMarkup from '../markup/menuMarkup.js'
@@ -91,11 +93,9 @@ const profileScene = [
                     const attachmentParams = {
 						peer_id: ctx.peerId,
 						source: {
-							value: imgPath,
+							value: fs.createReadStream(imgPath),
 						},
 					}
-
-                    console.log(attachmentParams);
 
 					const attachment = await vk.upload.messagePhoto(attachmentParams)
 
