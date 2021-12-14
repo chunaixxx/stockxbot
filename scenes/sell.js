@@ -75,6 +75,7 @@ const profileScene = [
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
 					const { imgUrl, filename } = ctx.scene.state.good
+
 					const goodName = ctx.scene.state.good.name
 					const imgPath = `./images/${filename}.jpg`
 
@@ -96,6 +97,7 @@ const profileScene = [
 						keyboard: keyboard(answerMarkup),
 					})
 				} catch (e) {
+                    console.log(e);
 					ctx.send('Произошла какая-то ошибка.')
 					ctx.scene.leave()
 				}
