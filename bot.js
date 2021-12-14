@@ -25,6 +25,11 @@ const sceneManager = new SceneManager()
 const questionManager = new QuestionManager()
 const hearManager = new HearManager()
 
+vk.updates.use((ctx, next) => {
+    if (ctx.isChat) return
+    else next()
+})
+
 vk.updates.on('message_new', sessionManager.middleware)
 vk.updates.on('message_new', sceneManager.middleware)
 vk.updates.on('message_new', sceneManager.middlewareIntercept)
