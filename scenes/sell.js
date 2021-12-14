@@ -88,12 +88,16 @@ const profileScene = [
 					await generateImage(imgPath, filename)
 					ctx.scene.state.imgPath = imgPath
 
-					const attachment = await vk.upload.messagePhoto({
+                    const attachmentParams = {
 						peer_id: ctx.peerId,
 						source: {
 							value: imgPath,
 						},
-					})
+					}
+
+                    console.log(attachmentParams);
+
+					const attachment = await vk.upload.messagePhoto(attachmentParams)
 
 					ctx.scene.state.attachment = attachment
 
