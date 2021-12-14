@@ -96,6 +96,7 @@ const profileScene = [
 						keyboard: keyboard(answerMarkup),
 					})
 				} catch (e) {
+                    console.log(e)
 					ctx.send('Произошла какая-то ошибка.')
 					ctx.scene.leave()
 				}
