@@ -10,13 +10,6 @@ import baseSendMessage from '../baseSendMessage.js'
 
 import keyboard from '../markup/keyboard.js'
 
-import { fileURLToPath } from 'url';
-import path from 'path'
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 import fs from 'fs'
 
 import answerMarkup from '../markup/answerMarkup.js'
@@ -85,19 +78,17 @@ const profileScene = [
 				try {
 					const { imgUrl, filename } = ctx.scene.state.good
 					const goodName = ctx.scene.state.good.name
-					const imgPath = path.join(__dirname, `../images/${filename}.jpg`)
+					const imgPath = `./images/${filename}.jpg`
 
-					await generateImage(imgPath, filename)
+					await generateImage(imgUrl, filename)
 					ctx.scene.state.imgPath = imgPath
 
-                    const attachmentParams = {
+					const attachment = await vk.upload.messagePhoto({
 						peer_id: ctx.peerId,
 						source: {
-							value: fs.createReadStream(imgPath),
+							value: imgPath,
 						},
-					}
-
-					const attachment = await vk.upload.messagePhoto(attachmentParams)
+					})
 
 					ctx.scene.state.attachment = attachment
 
@@ -107,7 +98,7 @@ const profileScene = [
 						keyboard: keyboard(answerMarkup),
 					})
 				} catch (e) {
-                    console.log(e)
+                    console.log(e);
 					ctx.send('Произошла какая-то ошибка.')
 					ctx.scene.leave()
 				}
