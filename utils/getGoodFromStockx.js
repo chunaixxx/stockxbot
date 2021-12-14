@@ -10,12 +10,14 @@ const getGoodFromStockx = async url => {
 		let name = response.urlKey.split('-').join(' ').toUpperCase()
 
 
-        let rightUrl = url.slice(0, url.indexOf('?')); 
+        let rightUrl = response.image.slice(0, response.image.indexOf('?')); 
+
+        console.log(rightUrl);
 
 		return {
-			url: rightUrl,
+			url,
 			name,
-			imgUrl: response.image,
+			imgUrl: rightUrl,
 			filename: response.urlKey,
 			allSizes: sizes[0] ? sizes : null
 		}
