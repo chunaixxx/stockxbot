@@ -10,7 +10,11 @@ import baseSendMessage from '../baseSendMessage.js'
 
 import keyboard from '../markup/keyboard.js'
 
-import fs from 'fs'
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import answerMarkup from '../markup/answerMarkup.js'
 import { baseMarkup } from '../markup/baseMarkup.js'
@@ -78,7 +82,7 @@ const profileScene = [
 				try {
 					const { imgUrl, filename } = ctx.scene.state.good
 					const goodName = ctx.scene.state.good.name
-					const imgPath = `./images/${filename}.jpg`
+					const imgPath = path.resolve(__dirname, `../images/${filename}.jpg`)
 
 					await generateImage(imgUrl, filename)
 					ctx.scene.state.imgPath = imgPath
