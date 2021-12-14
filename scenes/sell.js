@@ -87,7 +87,7 @@ const profileScene = [
 					await generateImage(imgUrl, filename)
 					ctx.scene.state.imgPath = imgPath
 
-                    console.log(imgPath);
+                    console.log(ctx.scene.state.good);
 
 					const attachment = await vk.upload.messagePhoto({
 						peer_id: ctx.peerId,
