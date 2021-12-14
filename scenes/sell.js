@@ -10,6 +10,13 @@ import baseSendMessage from '../baseSendMessage.js'
 
 import keyboard from '../markup/keyboard.js'
 
+import { fileURLToPath } from 'url';
+import path from 'path'
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 import answerMarkup from '../markup/answerMarkup.js'
 import { baseMarkup } from '../markup/baseMarkup.js'
 import menuMarkup from '../markup/menuMarkup.js'
@@ -76,9 +83,9 @@ const profileScene = [
 				try {
 					const { imgUrl, filename } = ctx.scene.state.good
 					const goodName = ctx.scene.state.good.name
-					const imgPath = `./images/${filename}.jpg`
+					const imgPath = path.join(__dirname, `../images/${filename}.jpg`)
 
-					await generateImage(imgUrl, filename)
+					await generateImage(imgPath, filename)
 					ctx.scene.state.imgPath = imgPath
 
 					const attachment = await vk.upload.messagePhoto({
@@ -87,8 +94,6 @@ const profileScene = [
 							value: imgPath,
 						},
 					})
-
-                    console.log(attachment);
 
 					ctx.scene.state.attachment = attachment
 
