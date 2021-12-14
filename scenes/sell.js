@@ -114,7 +114,7 @@ const profileScene = [
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				if (sizes) {
 					return ctx.send({
-						message: `❗ Теперь укажи размер. Пожалуйста, обрати внимание на то, что у женских и мужских моделей разная размерная сетка, поэтому пойми какой размер тебе нужен из списка на сайте:\n\n${ sizes.join(', ') }`,
+						message: `❗️ Теперь напиши размер. ВАЖНО! Писать в той размерности, которая указана у товара на stockx.com. Подробнее в FAQ.\n\n${ sizes.join(', ') }`,
 						keyboard: keyboard(previousMarkup),
 					})
 				}
@@ -172,7 +172,7 @@ const profileScene = [
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				return ctx.send({
 					message:
-						'❗ Укажите город в котором осуществляется продажа.',
+						'❗️ Укажите город, в котором осуществляется продажа. Если города нет в списке, введите название вручную.',
 					keyboard: keyboard([...cityMarkup, ...previousMarkup]),
 				})
 			}

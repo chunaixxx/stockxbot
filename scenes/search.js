@@ -33,7 +33,7 @@ const searchScene = [
 
             if (ctx.text == 'Поиск скидки') {
                 return ctx.send({
-                    message: `Очень рады что тебя заинтересовали наши скидки! Мы делаем скидку в таких магазинах как:\n\nLamoda -25%\nLeform 35-40%\nAsos до 40%\nFarfetch до 20%\nStreet Beat до 40%\nBrandshop 15%\n\nЧтобы узнать подробности и заказать жми https://vk.com/eileonov`,
+                    message: `Очень рады что тебя заинтересовали наши скидки! Мы делаем скидку в таких магазинах как:\n\nLamoda -25%\nLeform 35-40%\nAsos до 40%\nFarfetch до 20%\nStreet Beat до 40%\nBrandshop 15%\n\nЧтобы узнать подробности и заказать пиши https://vk.com/eileonov`,
                     keyboard: keyboard([...methodSearch, ...menuMarkup])
                 })
             }
@@ -144,7 +144,7 @@ const searchScene = [
 				if (ctx.scene.step.firstTime || !ctx.text)
 					return ctx.send({
 						message:
-							'❗️ Использовать фильтрацию по размеру? Если да, то перечислите через пробел нужные размеры.\n\nПримеры: 8 8,5 9,5W 10W 4K 4C 6Y M L',
+							'❗️Использовать фильтрацию по размеру? Введите нужные размеры через пробел в том формате, в котором они указаны на stockx.com. Если не уверены в правильности ввода, обратитесь к FAQ.\n\nПример ввода: 7 7Y 7W 11C 4K (это все разные размерные сетки)',
 						keyboard: keyboard(skipMarkup),
 					})
 	
