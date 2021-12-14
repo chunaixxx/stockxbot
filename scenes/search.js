@@ -18,7 +18,6 @@ import skipMarkup from '../markup/skipMarkup.js'
 import previousMarkup from '../markup/previousMarkup.js'
 
 import getGoodFromStockx from '../utils/getGoodFromStockx.js'
-import generateImage from '../utils/generateImage.js'
 import convertURL from '../utils/convertURL.js'
 import sortGoodsByPrice from '../utils/sortGoodsByPrice.js'
 import { incrementSearch, resetSearchInfo } from '../utils/updateSearchInfo.js'
