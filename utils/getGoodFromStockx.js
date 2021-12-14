@@ -12,8 +12,6 @@ const getGoodFromStockx = async url => {
 
         let rightUrl = response.image.slice(0, response.image.indexOf('?')); 
 
-        console.log(rightUrl);
-
 		return {
 			url,
 			name,
