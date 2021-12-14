@@ -77,15 +77,15 @@ const profileScene = [
 					const { imgUrl, filename } = ctx.scene.state.good
 
 					const goodName = ctx.scene.state.good.name
-					const imgPath = `./images/${filename}.jpg`
+					// const imgPath = `./images/${filename}.jpg`
 
-					await generateImage(imgUrl, filename)
-					ctx.scene.state.imgPath = imgPath
+					// await generateImage(imgUrl, filename)
+					// ctx.scene.state.imgPath = imgPath
 
 					const attachment = await vk.upload.messagePhoto({
 						peer_id: ctx.peerId,
 						source: {
-							value: imgPath,
+							value: imgUrl,
 						},
 					})
 
