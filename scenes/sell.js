@@ -78,6 +78,8 @@ const profileScene = [
 					const goodName = ctx.scene.state.good.name
 					const imgPath = `./images/${filename}.jpg`
 
+                    console.log(ctx.scene.state.good);
+
 					await generateImage(imgUrl, filename)
 					ctx.scene.state.imgPath = imgPath
 
