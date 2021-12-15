@@ -57,6 +57,8 @@ const profileScene = [
 				ctx.scene.state.link = convertURL(ctx.text)
 				ctx.scene.state.good = await getGoodFromStockx(ctx.scene.state.link)
 
+                console.log(ctx.scene.state.good);
+
 				if (ctx.scene.state.good) ctx.scene.step.next()
 				else
 					ctx.send({
