@@ -17,7 +17,6 @@ import previousMarkup from '../markup/previousMarkup.js'
 import answerMarkup from '../markup/answerMarkup.js'
 
 import getGoodFromStockx from '../utils/getGoodFromStockx.js'
-import generateImage from '../utils/generateImage.js'
 import { resetSearchInfo } from '../utils/updateSearchInfo.js'
 
 const myAds = [
@@ -278,23 +277,14 @@ const myAds = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
-					const { imgUrl, filename, goodName } = ctx.scene.state.selectedGood
+					const { imgUrl, goodName } = ctx.scene.state.selectedGood
 
-                    console.log(imgUrl);
-
-					const imgPath = `./images/${filename}.jpg`
-
-					await generateImage(imgUrl, filename)
-					ctx.scene.state.imgPath = imgPath
-
-					const attachment = await vk.upload.messagePhoto({
+                    const attachment = await vk.upload.messagePhoto({
 						peer_id: ctx.peerId,
 						source: {
-							value: imgPath,
+							value: imgUrl,
 						},
 					})
-
-					ctx.scene.state.attachment = attachment
 
 					const oldSize = ctx.scene.state.selectedGood.size
 					const oldPrice = ctx.scene.state.selectedGood.price

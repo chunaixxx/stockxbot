@@ -18,7 +18,6 @@ import previousMarkup from '../markup/previousMarkup.js'
 
 import getUserName from '../utils/getUserName.js'
 import getGoodFromStockx from '../utils/getGoodFromStockx.js'
-import generateImage from '../utils/generateImage.js'
 import convertURL from '../utils/convertURL.js'
 
 const profileScene = [
@@ -202,7 +201,7 @@ const profileScene = [
 				ctx.send({
 					message,
 					keyboard: keyboard(answerMarkup),
-					attachment: ctx.scene.state.attachment ,
+					attachment: ctx.scene.state.attachment,
 				})
 			}
 
