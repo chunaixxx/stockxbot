@@ -279,6 +279,9 @@ const myAds = [
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
 					const { imgUrl, filename, goodName } = ctx.scene.state.selectedGood
+
+                    console.log(imgUrl);
+
 					const imgPath = `./images/${filename}.jpg`
 
 					await generateImage(imgUrl, filename)

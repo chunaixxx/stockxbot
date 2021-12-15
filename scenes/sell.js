@@ -211,7 +211,7 @@ const profileScene = [
 					const { link, price, city } = ctx.scene.state
 					const size = ctx.scene.state.size || null
 					const goodName = ctx.scene.state.good.name
-					const filename = ctx.scene.state.good.filename
+					const imgUrl = ctx.scene.state.good.imgUrl
 
 					const { firstname, lastname } = await getUserName(ctx.senderId)
 
@@ -219,7 +219,7 @@ const profileScene = [
 						sellerId: ctx.senderId,
 						sellerName: `${ firstname } ${ lastname }`,
 						goodName,
-						filename,
+						imgUrl,
 						link,
 						size,
 						price,

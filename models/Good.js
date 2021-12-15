@@ -18,7 +18,7 @@ const goodSchema = new Schema({
 		required: true
 	},
 
-	filename: { 
+	imgUrl: { 
 		type: String,
 		required: true
 	},
