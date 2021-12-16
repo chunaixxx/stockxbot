@@ -3,7 +3,6 @@ import getRandomProxy from './getRandomProxy.js';
 
 const getGoodFromStockx = async url => {
 	try {
-
         let response = null;
         
         if (Math.random() > 0.3) {
@@ -16,7 +15,6 @@ const getGoodFromStockx = async url => {
 		const sizes = [...response.variants].map(item => item.size)
 
 		let name = response.urlKey.split('-').join(' ').toUpperCase()
-
 
         let rightUrl = response.image.slice(0, response.image.indexOf('?')); 
 

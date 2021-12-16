@@ -16,6 +16,7 @@ import menuMarkup from '../markup/menuMarkup.js'
 import cityMarkup from '../markup/cityMarkup.js'
 import previousMarkup from '../markup/previousMarkup.js'
 
+import generateImage from '../utils/generateImage.js'
 import getUserName from '../utils/getUserName.js'
 import getGoodFromStockx from '../utils/getGoodFromStockx.js'
 import convertURL from '../utils/convertURL.js'
@@ -29,6 +30,13 @@ const profileScene = [
 				return ctx.scene.leave()
 			}
 
+            // Мы нашли ваш товар?
+            if (ctx.text == 'Нет')
+                return ctx.send({
+                    message:
+                        '❗ Хорошо, можете попробовать еще раз указать ссылку на товар. В случае проблем обращайтесь к главному администратору',
+                    keyboard: keyboard(menuMarkup),
+                })
 			try {
 				const goodsOfUser = await Good.find({ sellerId: ctx.senderId })
 				const user = await User.findOne({ userId: ctx.senderId })
@@ -46,15 +54,16 @@ const profileScene = [
 
 				ctx.scene.state.size = null
 
-				if (ctx.scene.step.firstTime || !ctx.text)
+				if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
 					return ctx.send({
 						message:
 							'❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nШаблон: stockx.com/*',
 						keyboard: keyboard(menuMarkup),
 					})
 
+                const link = ctx?.attachments[0]?.url || ctx.text
 
-				ctx.scene.state.link = convertURL(ctx.text)
+				ctx.scene.state.link = convertURL(link)
 				ctx.scene.state.good = await getGoodFromStockx(ctx.scene.state.link)
 
 				if (ctx.scene.state.good) ctx.scene.step.next()
@@ -73,18 +82,37 @@ const profileScene = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
-					const { imgUrl } = ctx.scene.state.good
+					// const { imgUrl } = ctx.scene.state.good
 
+					// const goodName = ctx.scene.state.good.name
+
+					// const attachment = await vk.upload.messagePhoto({
+					// 	peer_id: ctx.peerId,
+					// 	source: {
+					// 		value: imgUrl,
+					// 	},
+					// })
+
+					// ctx.scene.state.attachment = attachment
+
+
+					const { imgUrl, filename } = ctx.scene.state.good
 					const goodName = ctx.scene.state.good.name
+					const imgPath = `./images/${filename}.jpg`
+
+					await generateImage(imgUrl, filename)
+					ctx.scene.state.imgPath = imgPath
 
 					const attachment = await vk.upload.messagePhoto({
 						peer_id: ctx.peerId,
 						source: {
-							value: imgUrl,
+							value: imgPath,
 						},
 					})
 
 					ctx.scene.state.attachment = attachment
+
+
 
 					ctx.send({
 						message: `❗ Мы нашли твой товар?\n\n${goodName}`,
@@ -210,7 +238,7 @@ const profileScene = [
 					const { link, price, city } = ctx.scene.state
 					const size = ctx.scene.state.size || null
 					const goodName = ctx.scene.state.good.name
-					const imgUrl = ctx.scene.state.good.imgUrl
+					const { imgUrl, filename } = ctx.scene.state.good
 
 					const { firstname, lastname } = await getUserName(ctx.senderId)
 
@@ -219,6 +247,7 @@ const profileScene = [
 						sellerName: `${ firstname } ${ lastname }`,
 						goodName,
 						imgUrl,
+                        filename,
 						link,
 						size,
 						price,
@@ -249,7 +278,6 @@ const profileScene = [
 			}
 
 			if (ctx.text == 'Нет') {
-				ctx.send('❗ Возвращаю тебя к панели создания объявления')
 				ctx.scene.step.go(0)
 			}
 		},

@@ -17,6 +17,7 @@ import previousMarkup from '../markup/previousMarkup.js'
 import answerMarkup from '../markup/answerMarkup.js'
 
 import getGoodFromStockx from '../utils/getGoodFromStockx.js'
+import generateImage from '../utils/generateImage.js'
 import { resetSearchInfo } from '../utils/updateSearchInfo.js'
 
 const myAds = [
@@ -227,14 +228,14 @@ const myAds = [
 					keyboard: keyboard(previousMarkup),
 				})
 				
-			if (!selectedGoodFromStocx.allSizes.includes(ctx.text)) {
+			if (!selectedGoodFromStocx.allSizes.includes(ctx.text.toUpperCase())) {
 				ctx.send({
 					message:
 						'Выбранного вами размера не существует. Пожалуйста напишите размер предложенный из списка выше',
 					keyboard: keyboard(previousMarkup),
 				})
 			} else {
-				ctx.scene.state.newGood.size = ctx.text
+				ctx.scene.state.newGood.size = ctx.text.toUpperCase()
 				ctx.scene.step.go(4)
 			}
 		},
@@ -277,12 +278,25 @@ const myAds = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
-					const { imgUrl, goodName } = ctx.scene.state.selectedGood
+					// const { imgUrl, goodName } = ctx.scene.state.selectedGood
 
-                    const attachment = await vk.upload.messagePhoto({
+                    // const attachment = await vk.upload.messagePhoto({
+					// 	peer_id: ctx.peerId,
+					// 	source: {
+					// 		value: imgUrl,
+					// 	},
+					// })
+
+                    const { imgUrl, filename, goodName } = ctx.scene.state.selectedGood
+					const imgPath = `./images/${filename}.jpg`
+
+					await generateImage(imgUrl, filename)
+					ctx.scene.state.imgPath = imgPath
+
+					const attachment = await vk.upload.messagePhoto({
 						peer_id: ctx.peerId,
 						source: {
-							value: imgUrl,
+							value: imgPath,
 						},
 					})
 

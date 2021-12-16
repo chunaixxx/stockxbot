@@ -23,6 +23,11 @@ const goodSchema = new Schema({
 		required: true
 	},
 
+    filename: { 
+		type: String,
+		required: true
+	},
+
 	link: {
 		type: String,
 		required: true

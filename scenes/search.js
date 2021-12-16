@@ -116,7 +116,7 @@ const searchScene = [
 		},
 		// Нахождение товаров по ссылке
 		async ctx => {
-			if (ctx.scene.step.firstTime || !ctx.text)
+			if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
 			return ctx.send({
 				message: '❗ Укажите ссылку на товар с сайта stockx.com, чтобы показать все объявления конкретного товара\n\nШаблон: stockx.com/*',
 				keyboard: keyboard(previousMarkup),
@@ -125,7 +125,7 @@ const searchScene = [
 			if (ctx.text == 'Назад')
 				return ctx.scene.step.go(0)
 
-			const link = convertURL(ctx.text)
+			const link = convertURL(ctx.text || ctx?.attachments[0]?.url)
 			
 			const goodFromStockx = await getGoodFromStockx(link)
 			if (!goodFromStockx)
