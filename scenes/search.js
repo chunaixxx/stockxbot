@@ -161,7 +161,7 @@ const searchScene = [
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
 					message:
-						'❗ Использовать фильтрацию по цене? Если да, то укажите диапозон.\n\nПример: 10000-200000',
+						'❗ Использовать фильтрацию по цене? Если да, то укажите диапазон.\n\nПример: 10000-200000',
 					keyboard: keyboard(skipMarkup),
 				})
 
@@ -175,7 +175,7 @@ const searchScene = [
 				ctx.scene.state.range = [+rangeArr[0], +rangeArr[1]]
 				return ctx.scene.step.next()
 			} else {
-				return ctx.send('Укажите диапозон в правильном формате \n\n❌ 10.000руб.-200.000руб.\n✔️ 10000-200000')
+				return ctx.send('Укажите диапазон в правильном формате \n\n❌ 10.000руб.-200.000руб.\n✔️ 10000-200000')
 			}
 		},
 

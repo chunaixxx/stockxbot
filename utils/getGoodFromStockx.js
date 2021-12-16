@@ -1,13 +1,17 @@
-import StockXAPI from 'stockx-api'
-
-const stockX = new StockXAPI({
-    currency: 'USD',
-    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1'
-})
+import fetchProductDetails from './fetchProductDetails.js'
+import getRandomProxy from './getRandomProxy.js';
 
 const getGoodFromStockx = async url => {
 	try {
-		const response = await stockX.fetchProductDetails(url)
+
+        let response = null;
+        
+        if (Math.random() > 0.3) {
+            const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
+            response = await fetchProductDetails(url, { proxy: randomProxy })
+        } else {
+            response = await fetchProductDetails(url)
+        }
 
 		const sizes = [...response.variants].map(item => item.size)
 

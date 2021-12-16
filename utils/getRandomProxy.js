@@ -1,0 +1,1 @@
+export default proxyList => proxyList[Math.floor(Math.random() * proxyList.length)];
