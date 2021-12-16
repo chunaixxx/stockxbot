@@ -26,7 +26,7 @@ const getGoodFromStockx = async url => {
 			allSizes: sizes[0] ? sizes : null
 		}
 	} catch(e) {
-        console.log(e);
+        // console.log(e);
 		return null
 	}
 }

@@ -8,7 +8,6 @@ const generateImage = async (url, filename) => {
 	const imageIsExist = await fileIsExist(imgPath)
 	
 	if (!imageIsExist) {
-        console.log('Скачиваю картинку со StockX');
 		const writer = fs.createWriteStream(imgPath)
 
 		const response = await axios({
