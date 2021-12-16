@@ -5,7 +5,7 @@ const getGoodFromStockx = async url => {
 	try {
         let response = null;
         
-        if (Math.random() > 0.3) {
+        if (Math.random() < 0.25) {
             const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
             response = await fetchProductDetails(url, { proxy: randomProxy })
         } else {
