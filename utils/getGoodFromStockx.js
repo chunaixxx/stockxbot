@@ -5,12 +5,16 @@ const getGoodFromStockx = async url => {
 	try {
         let response = null;
         
-        if (Math.random() < 0.25) {
-            const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
-            response = await fetchProductDetails(url, { proxy: randomProxy })
-        } else {
-            response = await fetchProductDetails(url)
-        }
+        // if (Math.random() > 0.25) {
+        //     const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
+        //     console.log(randomProxy);
+        //     response = await fetchProductDetails(url, { proxy: randomProxy })
+        // } else {
+        //     response = await fetchProductDetails(url)
+        // }
+
+        const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
+        response = await fetchProductDetails(url, { proxy: randomProxy })
 
 		const sizes = [...response.variants].map(item => item.size)
 
@@ -26,7 +30,7 @@ const getGoodFromStockx = async url => {
 			allSizes: sizes[0] ? sizes : null
 		}
 	} catch(e) {
-        // console.log(e);
+        console.log(e);
 		return null
 	}
 }

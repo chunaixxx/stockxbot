@@ -117,17 +117,18 @@ const searchScene = [
 		// Нахождение товаров по ссылке
 		async ctx => {
 			if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
-			return ctx.send({
-				message: '❗ Укажите ссылку на товар с сайта stockx.com, чтобы показать все объявления конкретного товара\n\nШаблон: stockx.com/*',
-				keyboard: keyboard(previousMarkup),
-			})
+                return ctx.send({
+                    message: '❗ Укажите ссылку на товар с сайта stockx.com, чтобы показать все объявления конкретного товара\n\nШаблон: stockx.com/*',
+                    keyboard: keyboard(previousMarkup),
+                })
 
 			if (ctx.text == 'Назад')
 				return ctx.scene.step.go(0)
 
 			const link = convertURL(ctx.text || ctx?.attachments[0]?.url)
-			
+
 			const goodFromStockx = await getGoodFromStockx(link)
+
 			if (!goodFromStockx)
 				return ctx.send({
 					message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
@@ -140,22 +141,22 @@ const searchScene = [
 			ctx.scene.step.go(3)
 		},
 		// Фильтрация по размеру
-			async ctx => {
-				if (ctx.scene.step.firstTime || !ctx.text)
-					return ctx.send({
-						message:
-							'❗️Использовать фильтрацию по размеру? Введите нужные размеры через пробел в том формате, в котором они указаны на stockx.com. Если не уверены в правильности ввода, обратитесь к FAQ.\n\nПример ввода: 7 7Y 7W 11C 4K (это все разные размерные сетки)',
-						keyboard: keyboard(skipMarkup),
-					})
-	
-				if (ctx.text == 'Пропустить')
-					return ctx.scene.step.next()
-	
-				const range = ctx.text.toUpperCase().split(' ')
-				ctx.scene.state.sizeRange = range
-	
-				return ctx.scene.step.next()
-			},
+        async ctx => {
+            if (ctx.scene.step.firstTime || !ctx.text)
+                return ctx.send({
+                    message:
+                        '❗️Использовать фильтрацию по размеру? Введите нужные размеры через пробел в том формате, в котором они указаны на stockx.com. Если не уверены в правильности ввода, обратитесь к FAQ.\n\nПример ввода: 7 7Y 7W 11C 4K (это все разные размерные сетки)',
+                    keyboard: keyboard(skipMarkup),
+                })
+
+            if (ctx.text == 'Пропустить')
+                return ctx.scene.step.next()
+
+            const range = ctx.text.toUpperCase().split(' ')
+            ctx.scene.state.sizeRange = range
+
+            return ctx.scene.step.next()
+        },
 	// Фильтрация по цене
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
