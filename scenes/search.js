@@ -256,10 +256,16 @@ const searchScene = [
                             searchedGoods.forEach((item, index) => {
                                 const { sellerName, sellerId, city, size, price, hasDelivery, hasFitting, _id} = item;
 
+                                // if (size)
+                                //     sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nРазмер: ${ size } | Цена: ${ price }руб. | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
+                                // else
+                                //     sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nЦена: ${ price }руб. | Доставка: ${hasDelivery}\n\n`
+
                                 if (size)
-                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nРазмер: ${ size } | Цена: ${ price }руб. | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nРазмер: ${ size } | Цена: ${ price }руб.\n\n`
                                 else
-                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nЦена: ${ price }руб. | Доставка: ${hasDelivery}\n\n`
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nЦена: ${ price }руб.\n\n`
+
 
                                 counter += 1
 
@@ -339,10 +345,15 @@ const searchScene = [
                             searchedGoods.forEach((item, index) => {
                                 const { sellerName, sellerId, city, goodName, size, price, hasDelivery, hasFitting, _id} = item;
                 
+                                // if (size)
+                                //     sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nРазмер: ${ size } | Цена: ${ price }руб. | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
+                                // else
+                                //     sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nЦена: ${ price }руб. | Доставка: ${hasDelivery}\n\n`
+
                                 if (size)
-                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nРазмер: ${ size } | Цена: ${ price }руб. | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nРазмер: ${ size } | Цена: ${ price }руб.\n\n`
                                 else
-                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nЦена: ${ price }руб. | Доставка: ${hasDelivery}\n\n`
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nЦена: ${ price }руб.\n\n`
 
                                 counter += 1
 

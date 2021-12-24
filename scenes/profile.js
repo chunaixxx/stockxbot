@@ -55,6 +55,7 @@ const myAds = [
 					else
 						sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\n\n❗ Для снятия ограничений — оформите расширенный доступ\n\n`
 
+
 					if (goods.length === 0) {
 						ctx.send({
 							message: sendString + '❗ У тебя отсутствуют объявления. Попробуй создать их с помощью кнопки — Продать',
@@ -73,10 +74,15 @@ const myAds = [
 					goods.forEach((item, index) => {
 						const { goodName, size, price, city, views, hasDelivery, hasFitting } = item
 
-						if (size)
-							sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
-						else
-							sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
+						// if (size)
+						// 	sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
+						// else
+						// 	sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
+
+                        if (size)
+                            sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | ${views} показов\n\n`
+                        else
+                            sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | ${views} показов\n\n`
 
                         counter += 1
 
@@ -136,9 +142,15 @@ const myAds = [
 				let sendString = '❗ Используй кнопки, чтобы редактировать объявление\n\n'
 
 				const { goodName, size, price, city, hasDelivery, hasFitting } = ctx.scene.state.selectedGood
-				if (ctx.scene.state.selectedGood.size)
-					sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
-				else sendString += `${goodName}\n${price}руб. | ${city}| Доставка: ${hasDelivery}\n\n`
+
+				// if (ctx.scene.state.selectedGood.size)
+				// 	sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
+				// else sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery}\n\n`
+
+                if (ctx.scene.state.selectedGood.size)
+                    sendString += `${goodName}\n${size} | ${price}руб. | ${city}\n\n`
+                else 
+                    sendString += `${goodName}\n${price}руб. | ${city}\n\n`
 
 				const markup = ctx.scene.state.selectedGood.size ? myAdsMarkup : myAdsMarkupNotSize
 
@@ -184,11 +196,11 @@ const myAds = [
             if (ctx.text == 'Цена')
 				return ctx.scene.step.go(3)
             
-            if (ctx.text == 'Доставка')
-				return ctx.scene.step.go(4)
+            // if (ctx.text == 'Доставка')
+			// 	return ctx.scene.step.go(4)
 
-            if (ctx.text == 'Примерка' && ctx.scene.state.selectedGood.size)
-				return ctx.scene.step.go(4)
+            // if (ctx.text == 'Примерка' && ctx.scene.state.selectedGood.size)
+			// 	return ctx.scene.step.go(5)
 		},
 		// Размер
 		async ctx => {
@@ -343,12 +355,20 @@ const myAds = [
 					let strOldItem = ''
 					let strNewItem = ''
 
+                    // if (selectedGood.size) {
+                    //     strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nРазмер: ${selectedGood.size}\nГород: ${selectedGood.city}\nПримерка: ${selectedGood.hasFitting}\nДоставка: ${selectedGood.hasDelivery}\n\n`
+                    //     strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nРазмер: ${newGood.size}\nГород: ${newGood.city}\nПримерка: ${newGood.hasFitting}\nДоставка: ${newGood.hasDelivery}`
+                    // } else {
+                    //     strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nГород: ${selectedGood.city}\nДоставка: ${selectedGood.hasDelivery}\n\n`
+                    //     strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nГород: ${newGood.city}\nДоставка: ${newGood.hasDelivery}`
+                    // }
+
                     if (selectedGood.size) {
-                        strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nРазмер: ${selectedGood.size}\nГород: ${selectedGood.city}\nПримерка: ${selectedGood.hasFitting}\nДоставка: ${selectedGood.hasDelivery}\n\n`
-                        strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nРазмер: ${newGood.size}\nГород: ${newGood.city}\nПримерка: ${newGood.hasFitting}\nДоставка: ${newGood.hasDelivery}`
+                        strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nРазмер: ${selectedGood.size}\nГород: ${selectedGood.city}\n\n`
+                        strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nРазмер: ${newGood.size}\nГород: ${newGood.city}`
                     } else {
-                        strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nГород: ${selectedGood.city}\nДоставка: ${selectedGood.hasDelivery}\n\n`
-                        strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nГород: ${newGood.city}\nДоставка: ${newGood.hasDelivery}`
+                        strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nГород: ${selectedGood.city}\n\n`
+                        strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nГород: ${newGood.city}`
                     }
 
 					return ctx.send({
