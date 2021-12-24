@@ -6,12 +6,16 @@ export const myAdsMarkupNotSize = [
 			label: 'Цена',
 			color: 'positive',
 		}),
-		Keyboard.textButton({
-			label: 'Удалить',
-			color: 'negative',
+        Keyboard.textButton({
+			label: 'Доставка',
+			color: 'positive',
 		}),
 	],
 	[
+        Keyboard.textButton({
+			label: 'Удалить',
+			color: 'negative',
+		}),
 		Keyboard.textButton({
 			label: 'Назад',
 			color: 'default',
@@ -26,16 +30,26 @@ export const myAdsMarkup = [
 			label: 'Цена',
 			color: 'positive',
 		}),
-		Keyboard.textButton({
+        Keyboard.textButton({
 			label: 'Размер',
 			color: 'positive',
 		}),
-		Keyboard.textButton({
+	],
+    [
+        Keyboard.textButton({
+			label: 'Доставка',
+			color: 'positive',
+		}),
+        Keyboard.textButton({
+			label: 'Примерка',
+			color: 'positive',
+		}),
+    ],
+	[
+        Keyboard.textButton({
 			label: 'Удалить',
 			color: 'negative',
 		}),
-	],
-	[
 		Keyboard.textButton({
 			label: 'Назад',
 			color: 'default',

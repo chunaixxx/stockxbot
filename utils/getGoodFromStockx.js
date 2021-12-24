@@ -2,9 +2,7 @@ import fetchProductDetails from './fetchProductDetails.js'
 import getRandomProxy from './getRandomProxy.js';
 
 const getGoodFromStockx = async url => {
-	try {
-        let response = null;
-        
+	try {        
         // if (Math.random() > 0.25) {
         //     const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
         //     console.log(randomProxy);
@@ -14,7 +12,7 @@ const getGoodFromStockx = async url => {
         // }
 
         const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
-        response = await fetchProductDetails(url, { proxy: randomProxy })
+        const response = await fetchProductDetails(url, { proxy: randomProxy })
 
 		const sizes = [...response.variants].map(item => item.size)
 

@@ -48,6 +48,16 @@ const goodSchema = new Schema({
 		required: true,
 	},
 
+    hasDelivery: {
+		type: String,
+		required: true,
+	},
+
+    hasFitting: {
+		type: String,
+		default: null,
+	},
+
 	views: {
 		type: Number,
 		default: 0,

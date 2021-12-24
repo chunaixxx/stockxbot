@@ -31,12 +31,11 @@ const searchScene = [
 				return ctx.scene.leave()
 			}
 
-            if (ctx.text == 'Поиск скидки') {
+            if (ctx.text == 'Поиск скидки')
                 return ctx.send({
                     message: `Очень рады что тебя заинтересовали наши скидки! Мы делаем скидку в таких магазинах как:\n\nLamoda -25%\nLeform 35-40%\nAsos до 40%\nFarfetch до 20%\nStreet Beat до 40%\nBrandshop 15%\n\nЧтобы узнать подробности и заказать пиши https://vk.com/eileonov`,
                     keyboard: keyboard([...methodSearch, ...menuMarkup])
                 })
-            }
 
 			try {
 				const user = await User.findOne({ userId: ctx.senderId })
@@ -83,20 +82,18 @@ const searchScene = [
 			ctx.scene.state.sizeRange = []
 
 
-			if (ctx.text == 'Название') {
-				ctx.scene.step.go(1)
-			}
+			if (ctx.text == 'Название')
+				return ctx.scene.step.go(1)
 
-			if (ctx.text == 'Ссылка') {
-				ctx.scene.step.go(2)
-			}
+			if (ctx.text == 'Ссылка')
+				return ctx.scene.step.go(2)
 		},
 		// Нахождение товаров по имени
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
 					message:
-						'❗ Введите частичное название товара и мы найдем подходящие товары по вашему запросу',
+						'❗️ Введите частичное название товара. ТОЛЬКО название!',
 					keyboard: keyboard(previousMarkup),
 				})
 
@@ -145,26 +142,51 @@ const searchScene = [
             if (ctx.scene.step.firstTime || !ctx.text)
                 return ctx.send({
                     message:
-                        '❗️Использовать фильтрацию по размеру? Введите нужные размеры через пробел в том формате, в котором они указаны на stockx.com. Если не уверены в правильности ввода, обратитесь к FAQ.\n\nПример ввода: 7 7Y 7W 11C 4K (это все разные размерные сетки)',
-                    keyboard: keyboard(skipMarkup),
+                        '❗️ Использовать фильтрацию по размеру? Введите нужные размеры через пробел в том формате, в котором они указаны на stockx.com. Если не уверены в правильности ввода, обратитесь к FAQ.\n\nПример ввода: 7 7.5Y 7W 11C 4K 12.5 6c XS XXL (это все разные размерные сетки)',
+                    keyboard: keyboard([...previousMarkup, ...skipMarkup]),
                 })
+
+            if (ctx.text == 'Назад')
+                return ctx.scene.step.go(0)
 
             if (ctx.text == 'Пропустить')
                 return ctx.scene.step.next()
+
+            if (/us/i.test(ctx.text))
+                return ctx.send({
+                    message: `❗ Неправильный формат ввода. размер указывается без приставки US. Примеры ввода ниже:\n\n7.5US(M) = 7.5\n7.5US(W) = 7.5W\n7Y = 7Y\nXS = XS`,
+                    keyboard: keyboard([...previousMarkup, ...skipMarkup])
+                })
+
+            if (/,/.test(ctx.text))
+                return ctx.send({
+                    message: `❗ Если размер нецелочисленный, то он разделяется точкой, а не запятой. Примеры ввода ниже:\n\n7.5US(M) = 7.5\n7.5US(W) = 7.5W\n7Y = 7Y\nXS = XS`,
+                    keyboard: keyboard([...previousMarkup, ...skipMarkup])
+                })
+
+            if (ctx.text.match(/[a-z]/gi))
+                if (!/x|s|m|l|w|y|c|k/i.test(ctx.text))
+                    return ctx.send({
+                        message: `❗ Ошибка с вводом буквы. Примеры переводов размеров:\n\n7.5US(M) = 7.5\n7.5US(W) = 7.5W\n7Y = 7Y\nXS = XS`,
+                        keyboard: keyboard([...previousMarkup, ...skipMarkup])
+                    })
 
             const range = ctx.text.toUpperCase().split(' ')
             ctx.scene.state.sizeRange = range
 
             return ctx.scene.step.next()
         },
-	// Фильтрация по цене
+	    // Фильтрация по цене
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
 					message:
 						'❗ Использовать фильтрацию по цене? Если да, то укажите диапазон.\n\nПример: 10000-200000',
-					keyboard: keyboard(skipMarkup),
+					keyboard: keyboard([...previousMarkup, ...skipMarkup]),
 				})
+
+            if (ctx.text == 'Назад')
+                return ctx.scene.step.go(0)
 
 			if (ctx.text == 'Пропустить')
 				return ctx.scene.step.next()
@@ -176,7 +198,10 @@ const searchScene = [
 				ctx.scene.state.range = [+rangeArr[0], +rangeArr[1]]
 				return ctx.scene.step.next()
 			} else {
-				return ctx.send('Укажите диапазон в правильном формате \n\n❌ 10.000руб.-200.000руб.\n✔️ 10000-200000')
+				return ctx.send({
+                    message: 'Укажите диапазон в правильном формате \n\n❌ 10.000руб.-200.000руб.\n✔️ 10000-200000',
+                    keyboard: keyboard([...previousMarkup, ...skipMarkup])
+                })
 			}
 		},
 
@@ -229,12 +254,12 @@ const searchScene = [
                             const pages = []
 
                             searchedGoods.forEach((item, index) => {
-                                const { sellerName, sellerId, city, size, price, _id} = item;
-                
+                                const { sellerName, sellerId, city, size, price, hasDelivery, hasFitting, _id} = item;
+
                                 if (size)
-                                    sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nРазмер: ${size}, Цена: ${price}руб.\n\n`
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nРазмер: ${ size } | Цена: ${ price }руб. | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
                                 else
-                                    sendString += `📌 ${ sellerName }, ${city} (vk.com/id${sellerId})\nЦена: ${price}руб.\n\n`
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nЦена: ${ price }руб. | Доставка: ${hasDelivery}\n\n`
 
                                 counter += 1
 
@@ -266,11 +291,9 @@ const searchScene = [
 						})
 					}
 
-					await BotConfig.updateOne(
-						{
+					await BotConfig.updateOne({
 							$inc: { 'stats.countSearch': 1 }
-						}
-					)
+					})
 
 					return ctx.scene.step.go(0)
 				} catch (e) {
@@ -314,12 +337,12 @@ const searchScene = [
                             const pages = []
 
                             searchedGoods.forEach((item, index) => {
-                                const { sellerName, sellerId, city, goodName, size, price, _id} = item;
+                                const { sellerName, sellerId, city, goodName, size, price, hasDelivery, hasFitting, _id} = item;
                 
                                 if (size)
-                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | \nРазмер: ${ size }, Цена: ${ price }руб.\n\n`
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nРазмер: ${ size } | Цена: ${ price }руб. | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
                                 else
-                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName } | Цена: ${ price }руб.\n\n`
+                                    sendString += `📌 ${ sellerName }, ${ city } (vk.com/id${ sellerId })\n${ goodName }\nЦена: ${ price }руб. | Доставка: ${hasDelivery}\n\n`
 
                                 counter += 1
 

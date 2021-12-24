@@ -37,6 +37,7 @@ const profileScene = [
                         '❗ Хорошо, можете попробовать еще раз указать ссылку на товар. В случае проблем обращайтесь к главному администратору',
                     keyboard: keyboard(menuMarkup),
                 })
+
 			try {
 				const goodsOfUser = await Good.find({ sellerId: ctx.senderId })
 				const user = await User.findOne({ userId: ctx.senderId })
@@ -53,6 +54,8 @@ const profileScene = [
 
 
 				ctx.scene.state.size = null
+                ctx.scene.state.hasFitting = null
+                ctx.scene.state.hasDelivery = null
 
 				if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
 					return ctx.send({
@@ -82,20 +85,6 @@ const profileScene = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
-					// const { imgUrl } = ctx.scene.state.good
-
-					// const goodName = ctx.scene.state.good.name
-
-					// const attachment = await vk.upload.messagePhoto({
-					// 	peer_id: ctx.peerId,
-					// 	source: {
-					// 		value: imgUrl,
-					// 	},
-					// })
-
-					// ctx.scene.state.attachment = attachment
-
-
 					const { imgUrl, filename } = ctx.scene.state.good
 					const goodName = ctx.scene.state.good.name
 					const imgPath = `./images/${filename}.jpg`
@@ -111,8 +100,6 @@ const profileScene = [
 					})
 
 					ctx.scene.state.attachment = attachment
-
-
 
 					ctx.send({
 						message: `❗ Мы нашли твой товар?\n\n${goodName}`,
@@ -138,39 +125,43 @@ const profileScene = [
 		async ctx => {
 			const sizes = ctx.scene.state.good.allSizes
 
-			if (ctx.scene.step.firstTime || !ctx.text) {
-				if (sizes) {
-					return ctx.send({
-						message: `❗️ Теперь напиши размер. ВАЖНО! Писать в той размерности, которая указана у товара на stockx.com. Подробнее в FAQ.\n\n${ sizes.join(', ') }`,
-						keyboard: keyboard(previousMarkup),
-					})
-				}
-			}
+            if (!sizes.length)
+                return ctx.scene.step.next()
 
-			if (sizes) {
-				if (ctx.text == 'Назад') {
-					return ctx.scene.step.go(0)
-				}
+            if (ctx.scene.step.firstTime || !ctx.text)
+                return ctx.send({
+                    message: `❗️ Теперь напиши размер. ВАЖНО! Писать в той размерности, которая указана у товара на stockx.com. Подробнее в FAQ.\n\n${ sizes.join(' ') }`,
+                    keyboard: keyboard(previousMarkup),
+                })
 
-				if (!sizes.includes(ctx.text.toUpperCase())) {
-					ctx.send(
-						'❗ Выбранного вами размера не существует. Пожалуйста напишите размер предложенный из списка выше'
-					)
-				} else {
-					ctx.scene.state.size = ctx.text.toUpperCase()
-					ctx.scene.step.next()
-				}
-			} else
-				ctx.scene.step.next()
+            if (ctx.text == 'Назад')
+                return ctx.scene.step.go(0)
+
+            const mappedSizes = sizes.map(size => size.toUpperCase())
+
+            if (/us|,/i.test(ctx.text))
+                return ctx.send({
+                    message: `❗ Размер указывается без приставки US. Если размер нецелочисленный, то он разделяется точкой, а не запятой. Внимательно ознакомься с руководством и выбери размер из списка ниже\n\n${ sizes.join(' ') }`,
+                    keyboard: keyboard(previousMarkup)
+                })
+
+            if (!mappedSizes.includes(ctx.text.toUpperCase())) {
+                ctx.send({
+                    message: `❗ Выбранного тобой размера не существует. Выбери его из списка ниже\n\n${ sizes.join(' ') }`,
+                    keyboard: keyboard(previousMarkup)
+                })
+            } else {
+                ctx.scene.state.size = ctx.text.toUpperCase()
+                ctx.scene.step.next()
+            }
 		},
 		// Указать стоимость
 		async ctx => {
-			if (ctx.scene.step.firstTime || !ctx.text) {
+			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
 					message: '❗ Введите цену товара в рублях',
 					keyboard: keyboard(previousMarkup),
 				})
-			}
 
 			if (ctx.text == 'Назад' && !ctx.scene.state.good.allSizes) {
 				return ctx.scene.step.go(0)
@@ -194,19 +185,15 @@ const profileScene = [
 		},
 		// Указать город
 		async ctx => {
-			const msg = ctx.text.toLowerCase()
-
-			if (ctx.scene.step.firstTime || !ctx.text) {
+			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
 					message:
 						'❗️ Укажите город, в котором осуществляется продажа. Если города нет в списке, введите название вручную.',
 					keyboard: keyboard([...cityMarkup, ...previousMarkup]),
 				})
-			}
 
-			if (ctx.text == 'Назад') {
+			if (ctx.text == 'Назад')
 				return ctx.scene.step.go(3)
-			}
 
 			if (ctx.text.length > 20)
 				return ctx.send('❗ Название города слишком длинное')
@@ -215,71 +202,111 @@ const profileScene = [
 
 			ctx.scene.step.next()
 		},
+        // Указать возможность доставки
+		async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text)
+				return ctx.send({
+					message: '❗️ Укажите, доступна ли доставка',
+					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
+				})
+
+			if (ctx.text == 'Назад')
+				return ctx.scene.step.go(4)
+
+            if (ctx.text == 'Да')
+			    ctx.scene.state.hasDelivery = '✔️'
+            else if (ctx.text == 'Нет')
+                ctx.scene.state.hasDelivery = '❌'
+            else 
+                return
+
+			ctx.scene.step.next()
+		},
+        // Указать возможность примерки
+		async ctx => {
+            // Примерка доступна если у товара есть размер
+            if (ctx.scene.state.size) {
+                if (ctx.scene.step.firstTime || !ctx.text)
+				return ctx.send({
+					message: '❗️ Укажите, доступна ли примерка',
+					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
+				})
+
+                if (ctx.text == 'Назад')
+                    return ctx.scene.step.go(5)
+
+                if (ctx.text == 'Да')
+                    ctx.scene.state.hasFitting = '✔️'
+                else if (ctx.text == 'Нет')
+                    ctx.scene.state.hasFitting = '❌'
+                else 
+                    return
+            }
+
+			ctx.scene.step.next()
+		},
 		// Уточнение правильно ли составлено обьявление и добавление товара в базу данных
 		async ctx => {
+            const { link, price, size, city, hasFitting, hasDelivery } = ctx.scene.state
+            const { name: goodName, allSizes, imgUrl, filename } = ctx.scene.state.good
+
 			if (ctx.scene.step.firstTime || !ctx.text) {
-				const sizes = ctx.scene.state.good.allSizes
 				let message = ``
 
-				if (sizes) 
-					message = `❗ Обявление составлено правильно?\n\nНаименование: ${ctx.scene.state.good.name}\nЦена: ${ctx.scene.state.price}руб.\nРазмер: ${ctx.scene.state.size}\nГород: ${ctx.scene.state.city}`
+				if (allSizes) 
+					message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nРазмер: ${size}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}`
 				else
-					message = `❗ Обявление составлено правильно?\n\nНаименование: ${ctx.scene.state.good.name}\nЦена: ${ctx.scene.state.price}руб.\nГород: ${ctx.scene.state.city}`
+					message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nГород: ${city}\nДоставка: ${hasDelivery}`
 				
 				ctx.send({
 					message,
 					keyboard: keyboard(answerMarkup),
 					attachment: ctx.scene.state.attachment,
 				})
-			}
-
-			if (ctx.text == 'Да') {
-				try {
-					const { link, price, city } = ctx.scene.state
-					const size = ctx.scene.state.size || null
-					const goodName = ctx.scene.state.good.name
-					const { imgUrl, filename } = ctx.scene.state.good
-
-					const { firstname, lastname } = await getUserName(ctx.senderId)
-
-					const goodObj = {
-						sellerId: ctx.senderId,
-						sellerName: `${ firstname } ${ lastname }`,
-						goodName,
-						imgUrl,
-                        filename,
-						link,
-						size,
-						price,
-						city
-					}
-
-					const good = new Good(goodObj)
-	
-					await good.save()
-
-					await BotConfig.updateOne(
-						{
-							$inc: { 'stats.countGoods': 1 }
-						}
-					)
-	
-					ctx.send({
-						message: '❗ Товар успешно добавлен. Ты можешь увидеть свое объявление в пункте — Профиль',
-						keyboard: keyboard(baseMarkup),
-					})
-	
-					ctx.scene.step.next()					
-				} catch (e) {
-					console.log(e)
-					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-					return ctx.scene.leave()
-				}
-			}
-
-			if (ctx.text == 'Нет') {
-				ctx.scene.step.go(0)
-			}
+			} else {
+                if (ctx.text == 'Да') {
+                    try {
+                        const { firstname, lastname } = await getUserName(ctx.senderId)
+    
+                        const goodObj = {
+                            sellerId: ctx.senderId,
+                            sellerName: `${ firstname } ${ lastname }`,
+                            goodName,
+                            imgUrl,
+                            filename,
+                            link,
+                            size,
+                            price,
+                            city,
+                            hasDelivery,
+                            hasFitting
+                        }
+    
+                        const good = new Good(goodObj)
+        
+                        await good.save()
+    
+                        await BotConfig.updateOne({
+                                $inc: { 'stats.countGoods': 1 }
+                        })
+    
+                        ctx.send({
+                            message: '❗ Товар успешно добавлен. Ты можешь увидеть свое объявление в пункте — Профиль',
+                            keyboard: keyboard(baseMarkup),
+                        })
+        
+                        ctx.scene.step.next()					
+                    } catch (e) {
+                        console.log(e)
+                        ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                        return ctx.scene.leave()
+                    }
+                }
+    
+                if (ctx.text == 'Нет') {
+                    ctx.scene.step.go(0)
+                }
+            }
 		},
 	]),
 ]
