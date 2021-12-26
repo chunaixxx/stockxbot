@@ -11,7 +11,7 @@ import baseSendMessage from '../baseSendMessage.js'
 import keyboard from '../markup/keyboard.js'
 
 import { baseMarkup } from '../markup/baseMarkup.js'
-import { myAdsMarkup, myAdsMarkupNotSize } from '../markup/myAdsMarkup.js'
+import { myAdsMarkup, myAdsMarkupNotSize, selectAllAds, allAdsSettings } from '../markup/myAdsMarkup.js'
 import menuMarkup from '../markup/menuMarkup.js'
 import previousMarkup from '../markup/previousMarkup.js'
 import answerMarkup from '../markup/answerMarkup.js'
@@ -74,15 +74,10 @@ const myAds = [
 					goods.forEach((item, index) => {
 						const { goodName, size, price, city, views, hasDelivery, hasFitting } = item
 
-						// if (size)
-						// 	sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
-						// else
-						// 	sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
-
-                        if (size)
-                            sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | ${views} показов\n\n`
-                        else
-                            sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | ${views} показов\n\n`
+						if (size)
+							sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
+						else
+							sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
 
                         counter += 1
 
@@ -97,8 +92,8 @@ const myAds = [
                         ctx.send(page)
 
                     ctx.send({
-                        message: '❗ Ваши объявления. Введите номер (он указан в начале), чтобы отредактировать или удалить объявление',
-                        keyboard: keyboard(menuMarkup),
+                        message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
+                        keyboard: keyboard([...selectAllAds, ...menuMarkup]),
                     })
 
 					ctx.scene.state.isDelete = false
@@ -116,6 +111,10 @@ const myAds = [
 			if (ctx.text == 'Меню') {
 				baseSendMessage(ctx)
 				return ctx.scene.leave()
+			}
+
+            if (ctx.text == 'Все объявления') {
+				return ctx.scene.step.go(7)
 			}
 
 			if (ctx.scene.state.goods[+ctx.text])
@@ -143,14 +142,15 @@ const myAds = [
 
 				const { goodName, size, price, city, hasDelivery, hasFitting } = ctx.scene.state.selectedGood
 
-				// if (ctx.scene.state.selectedGood.size)
-				// 	sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
-				// else sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery}\n\n`
+				if (ctx.scene.state.selectedGood.size)
+					sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
+				else 
+                    sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery}\n\n`
 
-                if (ctx.scene.state.selectedGood.size)
-                    sendString += `${goodName}\n${size} | ${price}руб. | ${city}\n\n`
-                else 
-                    sendString += `${goodName}\n${price}руб. | ${city}\n\n`
+                // if (ctx.scene.state.selectedGood.size)
+                //     sendString += `${goodName}\n${size} | ${price}руб. | ${city}\n\n`
+                // else 
+                //     sendString += `${goodName}\n${price}руб. | ${city}\n\n`
 
 				const markup = ctx.scene.state.selectedGood.size ? myAdsMarkup : myAdsMarkupNotSize
 
@@ -196,11 +196,11 @@ const myAds = [
             if (ctx.text == 'Цена')
 				return ctx.scene.step.go(3)
             
-            // if (ctx.text == 'Доставка')
-			// 	return ctx.scene.step.go(4)
+            if (ctx.text == 'Доставка')
+				return ctx.scene.step.go(4)
 
-            // if (ctx.text == 'Примерка' && ctx.scene.state.selectedGood.size)
-			// 	return ctx.scene.step.go(5)
+            if (ctx.text == 'Примерка' && ctx.scene.state.selectedGood.size)
+				return ctx.scene.step.go(5)
 		},
 		// Размер
 		async ctx => {
@@ -274,7 +274,7 @@ const myAds = [
 
 			const patternNumber = /^\d+$/
 			if (patternNumber.test(ctx.text) == false)
-				return ctx.send('❗ Укажи стоимость в правильном формате:\n\n❌ 10.000руб.\n✔️ 10000')
+				return ctx.send('❗ Укажи стоимость в правильном формате:\n\n❌ 10.000руб.\n✅ 10000')
 
 			if (+ctx.text > 10000000)
 				return ctx.send('❗ Максимальная стоимость товара 10000000руб.')
@@ -296,14 +296,16 @@ const myAds = [
 			if (ctx.text == 'Назад')
 				return ctx.scene.step.go(1)
 
-			if (ctx.scene.state.selectedGood.hasDelivery == ctx.text)
+            const hasDelivery = ctx.scene.state.selectedGood.hasDelivery
+
+			if ((hasDelivery == '❌' && ctx.text == 'Нет') || (hasDelivery == '✅' && ctx.text == 'Да'))
 				return ctx.send({
 					message: '❗ Ты указал параметр который и так был указан в объявлении. Попробуй выбрать другой или вернись назад\n\n❗ Укажите, доступна ли доставка',
 					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
 				})
 
             if (ctx.text == 'Да')
-                ctx.scene.state.newGood.hasDelivery = '✔️'
+                ctx.scene.state.newGood.hasDelivery = '✅'
             else if (ctx.text == 'Нет')
                 ctx.scene.state.newGood.hasDelivery = '❌'
             else 
@@ -322,14 +324,16 @@ const myAds = [
 			if (ctx.text == 'Назад')
 				return ctx.scene.step.go(1)
 
-			if (ctx.scene.state.selectedGood.hasFitting== ctx.text)
+            const hasFitting = ctx.scene.state.selectedGood.hasFitting
+
+            if ((hasFitting == '❌' && ctx.text == 'Нет') || (hasFitting == '✅' && ctx.text == 'Да'))
 				return ctx.send({
-					message: '❗ Ты указал параметр который и так был указан в объявлении. Попробуй выбрать другой или вернись назад\n\n❗ Укажите, доступна ли доставка',
+					message: '❗ Ты указал параметр который и так был указан в объявлении. Попробуй выбрать другой или вернись назад\n\n❗ Укажите, доступна ли примерка',
 					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
 				})
 
             if (ctx.text == 'Да')
-                ctx.scene.state.newGood.hasFitting = '✔️'
+                ctx.scene.state.newGood.hasFitting = '✅'
             else if (ctx.text == 'Нет')
                 ctx.scene.state.newGood.hasFitting = '❌'
             else 
@@ -355,20 +359,12 @@ const myAds = [
 					let strOldItem = ''
 					let strNewItem = ''
 
-                    // if (selectedGood.size) {
-                    //     strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nРазмер: ${selectedGood.size}\nГород: ${selectedGood.city}\nПримерка: ${selectedGood.hasFitting}\nДоставка: ${selectedGood.hasDelivery}\n\n`
-                    //     strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nРазмер: ${newGood.size}\nГород: ${newGood.city}\nПримерка: ${newGood.hasFitting}\nДоставка: ${newGood.hasDelivery}`
-                    // } else {
-                    //     strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nГород: ${selectedGood.city}\nДоставка: ${selectedGood.hasDelivery}\n\n`
-                    //     strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nГород: ${newGood.city}\nДоставка: ${newGood.hasDelivery}`
-                    // }
-
                     if (selectedGood.size) {
-                        strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nРазмер: ${selectedGood.size}\nГород: ${selectedGood.city}\n\n`
-                        strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nРазмер: ${newGood.size}\nГород: ${newGood.city}`
+                        strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nРазмер: ${selectedGood.size}\nГород: ${selectedGood.city}\nПримерка: ${selectedGood.hasFitting}\nДоставка: ${selectedGood.hasDelivery}\n\n`
+                        strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nРазмер: ${newGood.size}\nГород: ${newGood.city}\nПримерка: ${newGood.hasFitting}\nДоставка: ${newGood.hasDelivery}`
                     } else {
-                        strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nГород: ${selectedGood.city}\n\n`
-                        strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nГород: ${newGood.city}`
+                        strOldItem = `❗ Старое:\nЦена: ${selectedGood.price}руб.\nГород: ${selectedGood.city}\nДоставка: ${selectedGood.hasDelivery}\n\n`
+                        strNewItem = `❗ Новое:\nЦена: ${newGood.price}руб.\nГород: ${newGood.city}\nДоставка: ${newGood.hasDelivery}`
                     }
 
 					return ctx.send({
@@ -404,6 +400,103 @@ const myAds = [
 				ctx.scene.step.go(1)
 			}
 		},
+        // Настройка всех объявлений
+        async ctx => {
+            if (ctx.scene.step.firstTime || !ctx.text)
+                return ctx.send({ 
+                    message: '❗ Ты попал в меню настроек всех объявлений. Выбери параметр который хочешь изменить для ВСЕХ объявлений.',
+                    keyboard: keyboard([...allAdsSettings, ...previousMarkup])
+                })
+
+            if (ctx.text == 'Назад')
+                return ctx.scene.step.go(0)
+
+            if (ctx.text == 'Доставка')
+				return ctx.scene.step.go(8)
+
+            if (ctx.text == 'Примерка')
+				return ctx.scene.step.go(9)
+        },
+        // Настройка доставки для всех объявлений
+        async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text)
+				return ctx.send({
+					message: '❗ Укажи, доступна ли доставка для ВСЕХ товаров',
+					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
+				})
+
+            try {
+                if (ctx.text == 'Назад')
+				    return ctx.scene.step.go(7)
+
+                if (ctx.text == 'Да')
+                    await Good.updateMany({ 'sellerId': ctx.peerId }, { hasDelivery: '✅' })
+                else if (ctx.text == 'Нет')
+                    await Good.updateMany({ 'sellerId': ctx.peerId }, { hasDelivery: '❌' })
+                else
+                    return
+
+                if (ctx.text == 'Да')
+                    ctx.send('✅ Доставка теперь доступна для всех твоих товаров.')
+                else if (ctx.text == 'Нет')
+                    ctx.send('❌ Доставка теперь недоступна для всех твоих товаров')
+                
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+                return ctx.scene.leave()
+            }
+
+            ctx.scene.step.go(0)       
+        },
+        // Настройка примерки для всех объявлений
+        async ctx => {
+            if (ctx.scene.step.firstTime || !ctx.text)
+                return ctx.send({
+                    message: '❗ Укажи, доступна ли примерка для ВСЕХ товаров',
+                    keyboard: keyboard([...answerMarkup, ...previousMarkup]),
+                })
+
+            try {
+                if (ctx.text == 'Назад')
+                    return ctx.scene.step.go(7)
+
+                if (ctx.text == 'Да')
+                    await Good.updateMany(
+                        { 
+                            'sellerId': ctx.peerId, 
+                            'hasFitting': { "$in": ['✅', '❌'] }
+                        }, 
+                        { 
+                            hasFitting: '✅' 
+                        }
+                    )
+                else if (ctx.text == 'Нет')
+                    await Good.updateMany(
+                        { 
+                            'sellerId': ctx.peerId, 
+                            'hasFitting': { "$in": ['✅', '❌'] }
+                        }, 
+                        { 
+                            hasFitting: '❌'
+                        }
+                    )
+                else
+                    return
+
+                if (ctx.text == 'Да')
+                    ctx.send('✅ Примерка теперь доступна для всех твоих товаров.')
+                else if (ctx.text == 'Нет')
+                    ctx.send('❌ Примерка теперь недоступна для всех твоих товаров')
+                
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+                return ctx.scene.leave()
+            }
+
+            ctx.scene.step.go(0)       
+        }
 	]),
 ]
 

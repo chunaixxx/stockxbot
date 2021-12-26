@@ -80,7 +80,7 @@ const superadminScene = [
             // Находится ли в строке только цифры?
 			const patternNumber = /^\d+$/
 			if (patternNumber.test(ctx.text) == false)
-				return ctx.send('❗ Укажите количество минут в прафильном формате:\n\n❌ 10.000 мин.\n✔️ 10000')
+				return ctx.send('❗ Укажите количество минут в прафильном формате:\n\n❌ 10.000 мин.\n✅ 10000')
 
             try {
                 await BotConfig.updateOne({}, { cooldownSearch: +ctx.text * 1000 * 60 })
@@ -109,7 +109,7 @@ const superadminScene = [
 
 			const patternNumber = /^\d+$/
 			if (patternNumber.test(ctx.text) == false)
-				return ctx.send('❗ Укажите количество поисков в прафильном формате:\n\n❌ 10 поисков \n✔️ 10')
+				return ctx.send('❗ Укажите количество поисков в правильном формате:\n\n❌ 10 поисков \n✅ 10')
 
             try {
                 await BotConfig.updateOne({}, { maxSearch: +ctx.text })
@@ -137,7 +137,7 @@ const superadminScene = [
             // Находится ли в строке только цифры?
 			const patternNumber = /^\d+$/
 			if (patternNumber.test(ctx.text) == false)
-				return ctx.send('❗ Укажите количество товаров в прафильном формате:\n\n❌ 10 товаров \n✔️ 10')
+				return ctx.send('❗ Укажите количество товаров в прафильном формате:\n\n❌ 10 товаров \n✅ 10')
 
             try {
                 await BotConfig.updateOne({}, { maxGoods: +ctx.text })

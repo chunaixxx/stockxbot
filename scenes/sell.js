@@ -172,7 +172,7 @@ const profileScene = [
 			// Находится ли в строке только цифры?
 			const patternNumber = /^\d+$/
 			if (patternNumber.test(ctx.text) == false)
-				return ctx.send('❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✔️ 10000')
+				return ctx.send('❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✅ 10000')
 
 			if (+ctx.text > 10000000)
 				return ctx.send('❗ Максимальная стоимость товара 10000000руб.')
@@ -203,48 +203,48 @@ const profileScene = [
 			ctx.scene.step.next()
 		},
         // Указать возможность доставки
-		// async ctx => {
-		// 	if (ctx.scene.step.firstTime || !ctx.text)
-		// 		return ctx.send({
-		// 			message: '❗️ Укажите, доступна ли доставка',
-		// 			keyboard: keyboard([...answerMarkup, ...previousMarkup]),
-		// 		})
+		async ctx => {
+			if (ctx.scene.step.firstTime || !ctx.text)
+				return ctx.send({
+					message: '❗️ Укажите, доступна ли доставка',
+					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
+				})
 
-		// 	if (ctx.text == 'Назад')
-		// 		return ctx.scene.step.go(4)
+			if (ctx.text == 'Назад')
+				return ctx.scene.step.go(4)
 
-        //     if (ctx.text == 'Да')
-		// 	    ctx.scene.state.hasDelivery = '✔️'
-        //     else if (ctx.text == 'Нет')
-        //         ctx.scene.state.hasDelivery = '❌'
-        //     else 
-        //         return
+            if (ctx.text == 'Да')
+			    ctx.scene.state.hasDelivery = '✅'
+            else if (ctx.text == 'Нет')
+                ctx.scene.state.hasDelivery = '❌'
+            else 
+                return
 
-		// 	ctx.scene.step.next()
-		// },
+			ctx.scene.step.next()
+		},
         // Указать возможность примерки
-		// async ctx => {
-        //     // Примерка доступна если у товара есть размер
-        //     if (ctx.scene.state.size) {
-        //         if (ctx.scene.step.firstTime || !ctx.text)
-		// 		return ctx.send({
-		// 			message: '❗️ Укажите, доступна ли примерка',
-		// 			keyboard: keyboard([...answerMarkup, ...previousMarkup]),
-		// 		})
+		async ctx => {
+            // Примерка доступна если у товара есть размер
+            if (ctx.scene.state.size) {
+                if (ctx.scene.step.firstTime || !ctx.text)
+				return ctx.send({
+					message: '❗️ Укажите, доступна ли примерка',
+					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
+				})
 
-        //         if (ctx.text == 'Назад')
-        //             return ctx.scene.step.go(5)
+                if (ctx.text == 'Назад')
+                    return ctx.scene.step.go(5)
 
-        //         if (ctx.text == 'Да')
-        //             ctx.scene.state.hasFitting = '✔️'
-        //         else if (ctx.text == 'Нет')
-        //             ctx.scene.state.hasFitting = '❌'
-        //         else 
-        //             return
-        //     }
+                if (ctx.text == 'Да')
+                    ctx.scene.state.hasFitting = '✅'
+                else if (ctx.text == 'Нет')
+                    ctx.scene.state.hasFitting = '❌'
+                else 
+                    return
+            }
 
-		// 	ctx.scene.step.next()
-		// },
+			ctx.scene.step.next()
+		},
 		// Уточнение правильно ли составлено обьявление и добавление товара в базу данных
 		async ctx => {
             const { link, price, size, city, hasFitting, hasDelivery } = ctx.scene.state
@@ -253,15 +253,15 @@ const profileScene = [
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				let message = ``
 
-				// if (allSizes) 
-				// 	message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nРазмер: ${size}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}`
-				// else
-				// 	message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nГород: ${city}\nДоставка: ${hasDelivery}`
-
-                if (allSizes) 
-					message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nРазмер: ${size}\nГород: ${city}`
+				if (allSizes) 
+					message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nРазмер: ${size}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}`
 				else
-					message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nГород: ${city}`
+					message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nГород: ${city}\nДоставка: ${hasDelivery}`
+
+                // if (allSizes) 
+				// 	message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nРазмер: ${size}\nГород: ${city}`
+				// else
+				// 	message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nГород: ${city}`
 
 				ctx.send({
 					message,
@@ -272,9 +272,6 @@ const profileScene = [
                 if (ctx.text == 'Да') {
                     try {
                         const { firstname, lastname } = await getUserName(ctx.senderId)
-
-                        const hasFitting = size ? '❌' : null
-                        const hasDelivery = '❌'
 
                         const goodObj = {
                             sellerId: ctx.senderId,

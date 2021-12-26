@@ -64,6 +64,8 @@ const goodSchema = new Schema({
 	},
 })
 
+goodSchema.index({ goodName: 'text' })
+
 const Good = mongoose.model('Good', goodSchema)
 
 export default Good
