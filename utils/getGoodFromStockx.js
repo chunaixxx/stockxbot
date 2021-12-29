@@ -3,14 +3,6 @@ import getRandomProxy from './getRandomProxy.js';
 
 const getGoodFromStockx = async url => {
 	try {        
-        // if (Math.random() > 0.25) {
-        //     const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
-        //     console.log(randomProxy);
-        //     response = await fetchProductDetails(url, { proxy: randomProxy })
-        // } else {
-        //     response = await fetchProductDetails(url)
-        // }
-
         const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
         const response = await fetchProductDetails(url, { proxy: randomProxy })
 

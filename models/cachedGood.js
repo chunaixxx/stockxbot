@@ -2,6 +2,11 @@ import mongoose from 'mongoose'
 const Schema = mongoose.Schema
 
 const cachedGoodSchema = new Schema({
+    url: {
+		type: String,
+		required: true
+	},
+
 	name: { 
 		type: String,
 		index: true,
@@ -14,11 +19,6 @@ const cachedGoodSchema = new Schema({
 	},
 
     filename: { 
-		type: String,
-		required: true
-	},
-
-	url: {
 		type: String,
 		required: true
 	},

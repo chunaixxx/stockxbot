@@ -1,6 +1,7 @@
 import '../mongodb.js'
 import Good from '../models/Good.js'
 import User from '../models/User.js'
+import CachedGood from '../models/CachedGood.js'
 import BotConfig from '../models/BotConfig.js'
 
 import vk from '../commonVK.js'
@@ -25,6 +26,19 @@ const profileScene = [
 	new StepScene('sell', [
 		// Обработка ссылки
 		async ctx => {
+            // Сброс выбранных параметров
+            ctx.scene.state.selectedSizes = null
+            ctx.scene.state.selectedPrices = null
+            ctx.scene.state.hasDelivery = null
+            ctx.scene.state.hasFitting = null
+
+            // Приветственное сообщение
+            if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
+                return ctx.send({
+                    message: '❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nШаблон: stockx.com/*',
+                    keyboard: keyboard(menuMarkup),
+                })
+
 			if (ctx.text == 'Меню') {
 				baseSendMessage(ctx)
 				return ctx.scene.leave()
@@ -33,8 +47,7 @@ const profileScene = [
             // Мы нашли ваш товар?
             if (ctx.text == 'Нет')
                 return ctx.send({
-                    message:
-                        '❗ Хорошо, можете попробовать еще раз указать ссылку на товар. В случае проблем обращайтесь к главному администратору',
+                    message: '❗ Хорошо, можете попробовать еще раз указать ссылку на товар. В случае проблем обращайтесь к главному администратору',
                     keyboard: keyboard(menuMarkup),
                 })
 
@@ -45,33 +58,58 @@ const profileScene = [
 				const countGoods = goodsOfUser.length
 				const maxGoods = (await BotConfig.findOne()).maxGoods
 				const extendedAccess = user.extendedAccess
+                
+                ctx.scene.state.countGoods = countGoods
+                ctx.scene.state.maxGoods = maxGoods
+                ctx.scene.state.extendedAccess = extendedAccess
 
 				if (countGoods >= maxGoods && extendedAccess == false)
 					return ctx.send({
-						message: `❗ Вы превысили лимит выставления объявлений (${ countGoods }/${ maxGoods }). Удалите объявление, либо приобретите расширенный доступ, чтобы выставлять на продажу неограниченное количество товаров`,
+						message: `❗ Ты превысил лимит выставления объявлений (${ countGoods }/${ maxGoods }). Удали объявление, либо приобрети расширенный доступ, чтобы выставлять на продажу неограниченное количество товаров`,
 						keyboard: keyboard(menuMarkup)	
 					})
 
+                // Заменить эмодзи на emoji текст
+                const regexEmoji = /(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\udde6-\uddff]|\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|\ud83c[\ude32-\ude3a]|\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26FF]|\u2b05|\u2b06|\u2b07|\u2b1b|\u2b1c|\u2b50|\u2b55|\u231a|\u231b|\u2328|\u23cf|[\u23e9-\u23f3]|[\u23f8-\u23fa]|\ud83c\udccf|\u2934|\u2935|[\u2190-\u21ff])/g;
+                const deletedEmoji = ctx.text?.replace(regexEmoji, 'emoji');
+               
+                const unFormattedLink = ctx?.attachments[0]?.url || deletedEmoji
+                const link = convertURL(unFormattedLink)
+                ctx.scene.state.link = link
+                
+                // Кэширование товаров
+                const cachedGood = await CachedGood.findOne({ url: link })
+                if (cachedGood) {
+                    ctx.scene.state.good = cachedGood
+                } else {
+                    ctx.scene.state.good = await getGoodFromStockx(link)
+                    
+                    if (!ctx.scene.state.good) 
+                        return ctx.send({
+                            message: `❗ Ссылка не ведет на товар с stockx.com, попробуй еще раз.\n\nШаблон: stockx.com/*`,
+                            keyboard: keyboard(menuMarkup)
+                        })
 
-				ctx.scene.state.size = null
-                ctx.scene.state.hasFitting = null
-                ctx.scene.state.hasDelivery = null
+                    const newCachedGood = new CachedGood({ ...ctx.scene.state.good })
+                    await newCachedGood.save()
+                }
 
-				if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
-					return ctx.send({
-						message:
-							'❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nШаблон: stockx.com/*',
-						keyboard: keyboard(menuMarkup),
-					})
+                // Проверка безразмерного товара на наличие в продаже
+                const allSizes = ctx.scene.state.good.allSizes
+                if (allSizes === null) {
+                    const checkRepeatGood = await Good.findOne({ sellerId: ctx.peerId, link })
 
-                const link = ctx?.attachments[0]?.url || ctx.text
+                    if (checkRepeatGood)
+                        return ctx.send({
+                            message: `❗ У тебя уже есть этот товар на продаже. Попробуй еще раз`,
+                            keyboard: keyboard(menuMarkup)
+                        })
+                }
 
-				ctx.scene.state.link = convertURL(link)
-				ctx.scene.state.good = await getGoodFromStockx(ctx.scene.state.link)
-
-				if (ctx.scene.state.good) ctx.scene.step.next()
+				if (ctx.scene.state.good) 
+                    ctx.scene.step.next()
 				else
-					ctx.send({
+					return ctx.send({
 						message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
 						keyboard: keyboard(menuMarkup)
 					})
@@ -130,7 +168,7 @@ const profileScene = [
 
             if (ctx.scene.step.firstTime || !ctx.text)
                 return ctx.send({
-                    message: `❗️ Теперь напиши размер. ВАЖНО! Писать в той размерности, которая указана у товара на stockx.com. Подробнее в FAQ.\n\n${ sizes.join(' ') }`,
+                    message: `❗️ Теперь напиши размер. ЕСЛИ хочешь добавить несколько пар сразу, введи размеры через пробел. ВАЖНО! Писать в той размерности, которая указана у товара на stockx.com. Подробнее в FAQ\n\nДоступные размеры:\n${ sizes.join(' ') }`,
                     keyboard: keyboard(previousMarkup),
                 })
 
@@ -138,28 +176,50 @@ const profileScene = [
                 return ctx.scene.step.go(0)
 
             const mappedSizes = sizes.map(size => size.toUpperCase())
+            const selectedSizes = ctx.text.split(' ').map(size => size.toUpperCase())
 
-            if (/us|,/i.test(ctx.text))
+            const { countGoods, maxGoods, extendedAccess } = ctx.scene.state
+            const countSelectedGoods = selectedSizes?.length
+
+            if (countGoods + countSelectedGoods > maxGoods && extendedAccess == false)
                 return ctx.send({
-                    message: `❗ Размер указывается без приставки US. Если размер нецелочисленный, то он разделяется точкой, а не запятой. Внимательно ознакомься с руководством и выбери размер из списка ниже\n\n${ sizes.join(' ') }`,
-                    keyboard: keyboard(previousMarkup)
+                    message: `❗ Ты не можешь выставить столько объявлений, тогда у тебя будет превышен лимит товаров (${ countGoods +  countSelectedGoods}/${ maxGoods }). Доступно для продажи: ${maxGoods - countGoods}. Удали ненужные/проданные объявления, либо приобрети расширенный доступ, чтобы выставлять на продажу неограниченное количество товаров.\n\nДоступные размеры:\n${ sizes.join(' ') }`,
+                    keyboard: keyboard(previousMarkup)	
                 })
 
-            if (!mappedSizes.includes(ctx.text.toUpperCase())) {
-                ctx.send({
-                    message: `❗ Выбранного тобой размера не существует. Выбери его из списка ниже\n\n${ sizes.join(' ') }`,
-                    keyboard: keyboard(previousMarkup)
-                })
-            } else {
-                ctx.scene.state.size = ctx.text.toUpperCase()
-                ctx.scene.step.next()
+            const existingGoods = await Good.find({ sellerId: ctx.senderId, link: ctx.scene.state.link })
+            const existingSizes = existingGoods.map(good => good.size)
+
+            for (const selectedSize of selectedSizes) {
+                if (!mappedSizes.includes(selectedSize))
+                    return ctx.send({
+                        message: `❗️ Неправильный формат ввода. Примеры ниже. ЕСЛИ выставляешь несколько товаров, каждый размер через пробел\n\nДоступные размеры:\n${ sizes.join(' ') }`,
+                        keyboard: keyboard(previousMarkup)
+                    })
+
+                const checkRepeatSize = existingSizes.some(existingSize => existingSize == selectedSize)
+                if (checkRepeatSize)
+                    return ctx.send({
+                        message: `❗ У тебя уже выставлен этот товар с размером ${selectedSize}. Попробуй указать другой размер\n\nДоступные размеры:\n${ sizes.join(' ') }`,
+                        keyboard: keyboard(previousMarkup)	
+                    })
+
+                const checkRepeatSizeInMessage = selectedSizes.filter(size => selectedSize == size).length > 1
+                if (checkRepeatSizeInMessage)
+                    return ctx.send({
+                        message: `❗ Ты пытаешься выставить товары с одинаковыми размерами.\n\nДоступные размеры:\n${ sizes.join(' ') }`,
+                        keyboard: keyboard(previousMarkup)	
+                    })
             }
+
+            ctx.scene.state.selectedSizes = selectedSizes
+            ctx.scene.step.next()
 		},
 		// Указать стоимость
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
-					message: '❗ Введите цену товара в рублях',
+					message: '❗ Введи цену товара в рублях. ЕСЛИ ты выставил несколько размеров, введи цену на каждый товар через пробел в той же последовательности.\n\nПример:\n1000\n23500 25000 (если указал 2 размера)',
 					keyboard: keyboard(previousMarkup),
 				})
 
@@ -169,18 +229,47 @@ const profileScene = [
 				return ctx.scene.step.go(2)
 			}
 
-			// Находится ли в строке только цифры?
-			const patternNumber = /^\d+$/
-			if (patternNumber.test(ctx.text) == false)
-				return ctx.send('❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✅ 10000')
+            const selectedPrices = ctx.text.split(' ')
+            for (const selectedPrice of selectedPrices) {
+                // Находится ли в строке только цифры?
+                const patternNumber = /^\d+$/
+                if (patternNumber.test(selectedPrice) == false)
+                    return ctx.send({
+                        message: '❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✅ 10000\n❌ 10.000руб. 12.000руб.\n✅ 10000 12000',
+                        keyboard: keyboard(previousMarkup)
+                })
 
-			if (+ctx.text > 10000000)
-				return ctx.send('❗ Максимальная стоимость товара 10000000руб.')
+                if (+selectedPrice > 10000000)
+                    return ctx.send({
+                        message: '❗ Максимальная стоимость товара 10000000руб. Попробуй еще раз',
+                        keyboard: keyboard(previousMarkup)
+                    })
 
-			if (+ctx.text < 1)
-				return ctx.send('❗ Минимальная стоимость товара 1руб.')
+                if (+selectedPrice < 1)
+                    return ctx.send({
+                        message: '❗ Минимальная стоимость товара 1руб. Попробуй еще раз',
+                        keyboard: keyboard(previousMarkup)
+                    })
+            }
 
-			ctx.scene.state.price = ctx.text
+            const selectesSizes = ctx.scene.state.selectedSizes
+
+            const allSizes = ctx.scene.state.good.allSizes
+            if (allSizes == null && selectedPrices.length > 1) {
+                return ctx.send({
+                    message: '❗ Ты указал несколько ценников. На площадке ты можешь выставить 1 объявление конкретного товара, за исключением если у товара несколько размеров. Попробуй еще',
+                    keyboard: keyboard(previousMarkup),
+                })
+            }
+
+            if (selectedPrices.length !== selectesSizes?.length && allSizes) {
+                return ctx.send({
+                    message: `❗ Количество ценников не равняется количеству выбранных размеров. Попробуй еще раз\n\nВыбранные размеры: ${selectesSizes.join(', ')}\nКоличество выбранных размеров: ${selectesSizes.length}`,
+                    keyboard: keyboard(previousMarkup),
+                })                
+            }
+
+			ctx.scene.state.selectedPrices = selectedPrices
 			ctx.scene.step.next()
 		},
 		// Указать город
@@ -225,7 +314,7 @@ const profileScene = [
         // Указать возможность примерки
 		async ctx => {
             // Примерка доступна если у товара есть размер
-            if (ctx.scene.state.size) {
+            if (ctx.scene.state.selectedSizes?.length) {
                 if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
 					message: '❗️ Укажите, доступна ли примерка',
@@ -247,21 +336,23 @@ const profileScene = [
 		},
 		// Уточнение правильно ли составлено обьявление и добавление товара в базу данных
 		async ctx => {
-            const { link, price, size, city, hasFitting, hasDelivery } = ctx.scene.state
+            const { link, selectedPrices, selectedSizes, city, hasFitting, hasDelivery } = ctx.scene.state
             const { name: goodName, allSizes, imgUrl, filename } = ctx.scene.state.good
+
+            const formattedSelectedSizes = selectedSizes ? selectedSizes.join(', ') : null
+            const formattedSelectedPrices = selectedPrices.join('руб., ')
 
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				let message = ``
 
-				if (allSizes) 
-					message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nРазмер: ${size}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}`
-				else
-					message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nГород: ${city}\nДоставка: ${hasDelivery}`
+                const questionClarification = selectedPrices.length > 1 ? 'Объявления составлены правильно?' : 'Объявление составлено правильно?'
+                const wordPrice = selectedPrices.length > 1 ? 'Цены' : 'Цена'
+                const wordSize = selectedSizes?.length > 1 ? 'Размеры' : 'Размер'
 
-                // if (allSizes) 
-				// 	message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nРазмер: ${size}\nГород: ${city}`
-				// else
-				// 	message = `❗ Обявление составлено правильно?\n\nНаименование: ${goodName}\nЦена: ${price}руб.\nГород: ${city}`
+				if (allSizes) 
+					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}руб.\n${wordSize}: ${formattedSelectedSizes}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}`
+				else
+					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}руб.\nГород: ${city}\nДоставка: ${hasDelivery}`
 
 				ctx.send({
 					message,
@@ -273,33 +364,47 @@ const profileScene = [
                     try {
                         const { firstname, lastname } = await getUserName(ctx.senderId)
 
-                        const goodObj = {
-                            sellerId: ctx.senderId,
-                            sellerName: `${ firstname } ${ lastname }`,
-                            goodName,
-                            imgUrl,
-                            filename,
-                            link,
-                            size,
-                            price,
-                            city,
-                            hasDelivery,
-                            hasFitting
+                        const goods = []
+
+                        for (let i = 0; i < selectedPrices.length; i++) {
+                            const size = allSizes ? selectedSizes[i] : null
+                            const price = selectedPrices[i]
+
+                            const goodParams = {
+                                sellerId: ctx.senderId,
+                                sellerName: `${ firstname } ${ lastname }`,
+                                goodName,
+                                imgUrl,
+                                filename,
+                                link,
+                                size,
+                                price,
+                                city,
+                                hasDelivery,
+                                hasFitting
+                            }
+        
+                            goods.push(goodParams)
                         }
-    
-                        const good = new Good(goodObj)
-        
-                        await good.save()
-    
-                        await BotConfig.updateOne({
-                                $inc: { 'stats.countGoods': 1 }
-                        })
-    
-                        ctx.send({
-                            message: '❗ Товар успешно добавлен. Ты можешь увидеть свое объявление в пункте — Профиль',
-                            keyboard: keyboard(baseMarkup),
-                        })
-        
+
+
+                        goods.forEach(async good => 
+                            await(new Good(good)).save()
+                        )
+
+                        await BotConfig.updateOne({ $inc: { 'stats.countGoods': goods.length } })
+
+                        if (goods.length > 1)
+                            ctx.send({
+                                message: '❗ Товары успешно добавлены. Ты можешь увидеть свои объявления в пункте — Профиль',
+                                keyboard: keyboard(baseMarkup),
+                            })
+                        else
+                            ctx.send({
+                                message: '❗ Товар успешно добавлен. Ты можешь увидеть свое объявление в пункте — Профиль',
+                                keyboard: keyboard(baseMarkup),
+                            })
+
                         ctx.scene.step.next()					
                     } catch (e) {
                         console.log(e)
