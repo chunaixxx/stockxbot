@@ -111,7 +111,7 @@ const searchScene = [
 
                 if (/stockx.com/i.test(link) == false)
                     return ctx.send({
-                        message: `❗ Ссылка не ведет на сайт stockx.com, попробуй еще раз или попробуй ввести частичное название товара.\n\nШаблон: stockx.com/*`,
+                        message: `❗ Ссылка не ведет на сайт stockx.com, попробуй еще раз или попробуй ввести частичное название товара.\n\nПример: stockx.com/air-jordan-1-retro-high-og-patent-bred`,
                         keyboard: keyboard(previousMarkup)
                     })
 
@@ -119,7 +119,7 @@ const searchScene = [
 
                 if (!goodFromStockx)
                     return ctx.send({
-                        message: `❗ Ссылка которую вы указали не ведет на товар с stockx.com, попробуй еще раз или попробуй ввести частичное название товара.\n\nШаблон: stockx.com/*`,
+                        message: `❗ Ссылка которую вы указали не ведет на товар с stockx.com, попробуй еще раз или попробуй ввести частичное название товара.\n\nПример: stockx.com/air-jordan-1-retro-high-og-patent-bred`,
                         keyboard: keyboard(previousMarkup)
                     })
 
@@ -148,7 +148,7 @@ const searchScene = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
                 return ctx.send({
-                    message: '❗ Укажите ссылку на товар с сайта stockx.com, чтобы показать все объявления конкретного товара\n\nШаблон: stockx.com/*',
+                    message: '❗ Укажите ссылку на товар с сайта stockx.com, чтобы показать все объявления конкретного товара\n\nПример: stockx.com/air-jordan-1-retro-high-og-patent-bred',
                     keyboard: keyboard(previousMarkup),
                 })
 
@@ -161,7 +161,7 @@ const searchScene = [
 
 			if (!goodFromStockx)
 				return ctx.send({
-					message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
+					message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nПример: stockx.com/air-jordan-1-retro-high-og-patent-bred`,
 					keyboard: keyboard(previousMarkup)
 				})
 			

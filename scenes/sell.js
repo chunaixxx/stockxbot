@@ -36,7 +36,7 @@ const sellScene = [
             // Приветственное сообщение
             if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
                 return ctx.send({
-                    message: '❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nШаблон: stockx.com/*',
+                    message: '❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nПример: stockx.com/air-jordan-1-retro-high-og-patent-bred',
                     keyboard: keyboard(menuMarkup),
                 })
 
@@ -87,7 +87,7 @@ const sellScene = [
                     
                     if (!ctx.scene.state.good) 
                         return ctx.send({
-                            message: `❗ Ссылка не ведет на товар с stockx.com, попробуй еще раз.\n\nШаблон: stockx.com/*`,
+                            message: `❗ Ссылка не ведет на товар с stockx.com, попробуй еще раз.\n\nПример: stockx.com/air-jordan-1-retro-high-og-patent-bred`,
                             keyboard: keyboard(menuMarkup)
                         })
 
@@ -111,7 +111,7 @@ const sellScene = [
                     ctx.scene.step.next()
 				else
 					return ctx.send({
-						message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nШаблон: stockx.com/*`,
+						message: `❗ Ссылка не ведет на товар с stockx.com, попробуйте еще раз.\n\nПример: stockx.com/air-jordan-1-retro-high-og-patent-bred`,
 						keyboard: keyboard(menuMarkup)
 					})
 			} catch (e) {
