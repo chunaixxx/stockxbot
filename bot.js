@@ -16,7 +16,7 @@ const sceneManager = new SceneManager()
 
 // middlewares
 vk.updates.on('message', skipBotMessage)
-vk.updates.on('message', skipChat)
+vk.updates.use(skipChat)
 vk.updates.on('message', checkOnlySub)
 vk.updates.on('message', checkUser)
 
