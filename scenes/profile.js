@@ -1,59 +1,59 @@
-import '../mongodb.js'
-import Good from '../models/Good.js'
-import User from '../models/User.js'
-import BotConfig from '../models/BotConfig.js'
+import Good from '../models/Good'
+import User from '../models/User'
+import BotConfig from '../models/BotConfig'
 
-import vk from '../commonVK.js'
+import vk from '../commonVK'
 import { StepScene } from '@vk-io/scenes'
 
-import baseSendMessage from '../baseSendMessage.js'
+import baseSendMessage from '../baseSendMessage'
 
-import keyboard from '../markup/keyboard.js'
+import keyboard from '../markup/keyboard'
 
-import { baseMarkup } from '../markup/baseMarkup.js'
-import { myAdsMarkup, myAdsMarkupNotSize, selectAllAds, allAdsSettings } from '../markup/myAdsMarkup.js'
-import menuMarkup from '../markup/menuMarkup.js'
-import previousMarkup from '../markup/previousMarkup.js'
-import answerMarkup from '../markup/answerMarkup.js'
+import { baseMarkup } from '../markup/baseMarkup'
+import { myAdsMarkup, myAdsMarkupNotSize, selectAllAds, allAdsSettings } from '../markup/myAdsMarkup'
+import menuMarkup from '../markup/menuMarkup'
+import previousMarkup from '../markup/previousMarkup'
+import answerMarkup from '../markup/answerMarkup'
 
-import getGoodFromStockx from '../utils/getGoodFromStockx.js'
-import generateImage from '../utils/generateImage.js'
-import { resetSearchInfo } from '../utils/updateSearchInfo.js'
+import getGoodFromStockx from '../utils/getGoodFromStockx'
+import generateImage from '../utils/generateImage'
+import { resetSearchInfo } from '../utils/updateSearchInfo'
 
-const myAds = [
+const profileScene = [
 	new StepScene('profile', [
 		// Показ объявлений
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text || ctx.scene.state.isDelete) {
 				try {
-					const goods = await Good.find({ sellerId: ctx.senderId }).exec()
+                    // Объект с пользователем
+					const user = ctx.state.user
+
+                    // Товары пользователя
+					const goods = await Good.find({ sellerId: ctx.senderId })
 					ctx.scene.state.goods = goods
 
-					const botConfig = (await BotConfig.findOne())
+                    // Конфигурация бота
+					const { maxSearch, maxGoods, cooldownSearch } = await BotConfig.findOne()
 
-					const countGoods = goods.length
-					const leftGoods = botConfig.maxGoods - countGoods
-
-					const user = await User.findOne({ userId: ctx.senderId }).exec()
-
-					const countSearch = user.searchInfo.count
-					const leftSearch = botConfig.maxSearch - user.searchInfo.count
-					const extendedAccess = user.extendedAccess
-
-					const lastSearch = user.searchInfo.lastSearch
-					const cooldownSearch = process.env.COOLDOWN_SEARCH
+                    // Информация о поисках пользователя
+					const { count: countSearch, lastSearch } = user.searchInfo
+                    
+                    // Сколько осталось товаров и поисков у пользователя
+					const leftGoods = maxGoods - goods.length
+					const leftSearch = maxSearch - countSearch
 
 					let sendString = ''
 
+                    // Если прошло время выдать бесплатные поиски
 					if (lastSearch && Date.now() - lastSearch.getTime() >= cooldownSearch) {
 						await resetSearchInfo(ctx.senderId)
-						sendString += `❗ Теье снова доступно 3 новых поиска!\n\n`
+						sendString += `❗ Тебе снова доступны бесплатные поиски!\n\n`
 					}
 
-					if (extendedAccess)
-						sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ∞)\nПоисков: ${ countSearch } (осталось ∞)\nВы имеете расширенный доступ в котором нет ограничений\n\n`
+					if (user.extendedAccess)
+						sendString += `❗ Профиль\nОбъявлений: ${ goods.length } (осталось ∞)\nПоисков: ${ countSearch } (осталось ∞)\nВы имеете расширенный доступ в котором нет ограничений\n\n`
 					else
-						sendString += `❗ Профиль\nОбъявлений: ${ countGoods } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\n\n❗ Для снятия ограничений — оформите расширенный доступ\n\n`
+						sendString += `❗ Профиль\nОбъявлений: ${ goods.length } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\n\n❗ Для снятия ограничений — оформите расширенный доступ\n\n`
 
 
 					if (goods.length === 0) {
@@ -66,11 +66,10 @@ const myAds = [
 
                     ctx.send(sendString)
 
+                    // Пагинация товаров на несколько сообщений
                     sendString = ''
                     let counter = 0;
-
                     const pages = []
-
 					goods.forEach((item, index) => {
 						const { goodName, size, price, city, views, hasDelivery, hasFitting } = item
 
@@ -90,17 +89,16 @@ const myAds = [
 
                     for (const page of pages)
                         ctx.send(page)
+                    //
 
-                    ctx.send({
+                    ctx.scene.state.isDelete = false
+                    ctx.scene.state.selectedGood = null
+                    ctx.scene.state.newGood = null
+
+                    return ctx.send({
                         message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
                         keyboard: keyboard([...selectAllAds, ...menuMarkup]),
-                    })
-
-					ctx.scene.state.isDelete = false
-					ctx.scene.state.selectedGood = null
-					ctx.scene.state.newGood = null
-
-					return 
+                    }) 
 				} catch (e) {
 					console.log(e)
 					ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
@@ -108,14 +106,13 @@ const myAds = [
 				}
 			}
 
-			if (ctx.text == 'Меню') {
-				baseSendMessage(ctx)
-				return ctx.scene.leave()
-			}
-
-            if (ctx.text == 'Все объявления') {
-				return ctx.scene.step.go(7)
-			}
+            switch (ctx.text) {
+                case 'Меню':
+                    baseSendMessage(ctx)
+                    return ctx.scene.leave()
+                case 'Все объявления':
+                    return ctx.scene.step.go(7)
+            }
 
 			if (ctx.scene.state.goods[+ctx.text])
 				ctx.scene.step.next()
@@ -147,11 +144,6 @@ const myAds = [
 				else 
                     sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery}\n\n`
 
-                // if (ctx.scene.state.selectedGood.size)
-                //     sendString += `${goodName}\n${size} | ${price}руб. | ${city}\n\n`
-                // else 
-                //     sendString += `${goodName}\n${price}руб. | ${city}\n\n`
-
 				const markup = ctx.scene.state.selectedGood.size ? myAdsMarkup : myAdsMarkupNotSize
 
 				return ctx.send({
@@ -166,10 +158,7 @@ const myAds = [
 			if (ctx.text == 'Удалить') {
 				try {
 					await Good.deleteOne({ _id: ctx.scene.state.selectedGood._id })
-
-					await BotConfig.updateOne({
-							$inc: { 'stats.countDelete': 1 }
-					})
+					await BotConfig.updateOne({ $inc: { 'stats.countDelete': 1 } })
 
 					// Если товар был один
 					if (ctx.scene.state.goods.length == 1) {
@@ -289,7 +278,7 @@ const myAds = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
-					message: '❗ Укажите, доступна ли доставка',
+					message: '❗ Укажи, доступна ли доставка',
 					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
 				})
 
@@ -317,7 +306,7 @@ const myAds = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
-					message: '❗ Укажите, доступна ли примерка',
+					message: '❗ Укажи, доступна ли примерка',
 					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
 				})
 
@@ -345,16 +334,15 @@ const myAds = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
-                    const { imgUrl, filename } = ctx.scene.state.selectedGood
+                    const { selectedGood, newGood } = ctx.scene.state
+
+                    const { imgUrl, filename } = selectedGood
 					await generateImage(imgUrl, filename)
 
 					const attachment = await vk.upload.messagePhoto({
 						peer_id: ctx.peerId,
 						source: { value: `./images/${filename}.jpg` }
 					})
-
-                    const selectedGood = ctx.scene.state.selectedGood
-                    const newGood = ctx.scene.state.newGood
 
 					let strOldItem = ''
 					let strNewItem = ''
@@ -369,8 +357,7 @@ const myAds = [
 
 					return ctx.send({
 						message: `❗ Проверь старое и измененное объявление. Применить изменения?\n\nНаименование: ${selectedGood.goodName}\n\n${strOldItem}\n${strNewItem}`,
-						attachment,
-						keyboard: keyboard(answerMarkup),
+						attachment, keyboard: keyboard(answerMarkup),
 					})
 				} catch (e) {
 					console.log(e)
@@ -379,26 +366,23 @@ const myAds = [
 				}
 			}
 
-			if (ctx.text == 'Да') {
-				try {
-					const newGood = ctx.scene.state.newGood
-	
-					await Good.findOneAndUpdate({'_id': newGood._id }, newGood);
-					
-					ctx.send('❗ Товар успешно изменен')
-
-					return ctx.scene.step.go(0)
-				} catch (e) {
-					console.log(e)
-					ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
-					return ctx.scene.leave()
-				}
-			}
-
-			if (ctx.text == 'Нет') {
-				ctx.send('❗ Возвращаю тебя к панели редактирования объявления')
-				ctx.scene.step.go(1)
-			}
+            // Подтверждение редактирования
+            try {
+                switch (ctx.text) {
+                    case 'Да':
+                        const newGood = ctx.scene.state.newGood
+                        await Good.findOneAndUpdate({'_id': newGood._id }, newGood);
+                        ctx.send('❗ Товар успешно изменен')
+                        return ctx.scene.step.go(0)
+                    case 'Нет':
+                        ctx.send('❗ Возвращаю тебя к панели редактирования объявления')
+                        return ctx.scene.step.go(1)
+                }
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+                return ctx.scene.leave()
+            }
 		},
         // Настройка всех объявлений
         async ctx => {
@@ -408,14 +392,14 @@ const myAds = [
                     keyboard: keyboard([...allAdsSettings, ...previousMarkup])
                 })
 
-            if (ctx.text == 'Назад')
-                return ctx.scene.step.go(0)
-
-            if (ctx.text == 'Доставка')
-				return ctx.scene.step.go(8)
-
-            if (ctx.text == 'Примерка')
-				return ctx.scene.step.go(9)
+            switch (ctx.text) {
+                case 'Назад':
+                    return ctx.scene.step.go(0)
+                case 'Доставка':
+                    return ctx.scene.step.go(8)
+                case 'Примерка':
+                    return ctx.scene.step.go(9)
+            }
         },
         // Настройка доставки для всех объявлений
         async ctx => {
@@ -426,28 +410,25 @@ const myAds = [
 				})
 
             try {
-                if (ctx.text == 'Назад')
-				    return ctx.scene.step.go(7)
+                switch (ctx.text) {
+                    case 'Назад':
+                        return ctx.scene.step.go(7)
+                    case 'Да':
+                        await Good.updateMany({ 'sellerId': ctx.peerId }, { hasDelivery: '✅' })
+                        ctx.send('✅ Доставка теперь доступна для всех твоих товаров.')
+                        break;
+                    case 'Нет':
+                        await Good.updateMany({ 'sellerId': ctx.peerId }, { hasDelivery: '❌' })
+                        ctx.send('❌ Доставка теперь недоступна для всех твоих товаров')
+                        break;
+                }
 
-                if (ctx.text == 'Да')
-                    await Good.updateMany({ 'sellerId': ctx.peerId }, { hasDelivery: '✅' })
-                else if (ctx.text == 'Нет')
-                    await Good.updateMany({ 'sellerId': ctx.peerId }, { hasDelivery: '❌' })
-                else
-                    return
-
-                if (ctx.text == 'Да')
-                    ctx.send('✅ Доставка теперь доступна для всех твоих товаров.')
-                else if (ctx.text == 'Нет')
-                    ctx.send('❌ Доставка теперь недоступна для всех твоих товаров')
-                
+                return ctx.scene.step.go(0)
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
                 return ctx.scene.leave()
             }
-
-            ctx.scene.step.go(0)       
         },
         // Настройка примерки для всех объявлений
         async ctx => {
@@ -458,46 +439,33 @@ const myAds = [
                 })
 
             try {
-                if (ctx.text == 'Назад')
-                    return ctx.scene.step.go(7)
+                switch (ctx.text) {
+                    case 'Назад':
+                        return ctx.scene.step.go(7)
+                    case 'Да':
+                        await Good.updateMany(
+                            { 'sellerId': ctx.peerId, 'hasFitting': { "$in": ['✅', '❌'] } }, 
+                            { hasFitting: '✅' }
+                        )
+                        ctx.send('✅ Примерка теперь доступна для всех твоих товаров.')
+                        break;
+                    case 'Нет':
+                        await Good.updateMany(
+                            { 'sellerId': ctx.peerId, 'hasFitting': { "$in": ['✅', '❌'] } }, 
+                            { hasFitting: '❌' }
+                        )
+                        ctx.send('❌ Примерка теперь недоступна для всех твоих товаров')
+                        break;
+                }             
 
-                if (ctx.text == 'Да')
-                    await Good.updateMany(
-                        { 
-                            'sellerId': ctx.peerId, 
-                            'hasFitting': { "$in": ['✅', '❌'] }
-                        }, 
-                        { 
-                            hasFitting: '✅' 
-                        }
-                    )
-                else if (ctx.text == 'Нет')
-                    await Good.updateMany(
-                        { 
-                            'sellerId': ctx.peerId, 
-                            'hasFitting': { "$in": ['✅', '❌'] }
-                        }, 
-                        { 
-                            hasFitting: '❌'
-                        }
-                    )
-                else
-                    return
-
-                if (ctx.text == 'Да')
-                    ctx.send('✅ Примерка теперь доступна для всех твоих товаров.')
-                else if (ctx.text == 'Нет')
-                    ctx.send('❌ Примерка теперь недоступна для всех твоих товаров')
-                
+                return ctx.scene.step.go(0)
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
                 return ctx.scene.leave()
-            }
-
-            ctx.scene.step.go(0)       
+            }     
         }
 	]),
 ]
 
-export default myAds
+export default profileScene

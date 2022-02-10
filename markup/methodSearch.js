@@ -1,6 +1,6 @@
 import { Keyboard } from 'vk-io'
 
-const answerMarkup = [
+export const methodSearchMarkup = [
         Keyboard.textButton({
             label: 'Название',
             color: 'positive',
@@ -17,4 +17,15 @@ const answerMarkup = [
         ],
 ]
 
-export default answerMarkup
+export const methodSearchOnlyNameMarkup = [
+    Keyboard.textButton({
+        label: 'Название',
+        color: 'positive',
+    }),
+    [
+        Keyboard.textButton({
+            label: 'Поиск скидки',
+            color: 'positive',
+        }),
+    ],
+]

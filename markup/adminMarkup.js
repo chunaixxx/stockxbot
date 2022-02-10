@@ -7,7 +7,7 @@ export const adminMarkup = [
 	}),
 ]
 
-export const adminMenuMarkup = [
+export const editUserMarkup = [
 	[
 		Keyboard.textButton({
 			label: 'Выдать расширенный доступ',
@@ -25,31 +25,59 @@ export const adminMenuMarkup = [
 			label: 'Удалить объявления пользователя',
 			color: 'default',
 		}),
-	],
-	[
-		Keyboard.textButton({
-			label: 'Назначить администратора',
-			color: 'default',
-		}),
-		Keyboard.textButton({
-			label: 'Снять администратора',
-			color: 'default',
-		}),
-	],
-	[
-		Keyboard.textButton({
-			label: 'Статистика',
-			color: 'positive',
-		}),
-	],
+	]
 ]
+
+export const statsMarkup = [
+    Keyboard.textButton({
+        label: 'Статистика',
+        color: 'positive',
+    }),
+]
+
+export const selectMyIDMarkup = [
+    Keyboard.textButton({
+        label: 'Выбрать меня',
+        color: 'positive',
+    }),
+]
+
+export const banMarkup = [
+    Keyboard.textButton({
+        label: 'Заблокировать',
+        color: 'negative',
+    }),
+]
+
+export const unBanMarkup = [
+    Keyboard.textButton({
+        label: 'Разблокировать',
+        color: 'positive',
+    }),
+]
+
 
 export const settingsMarkup = [
 	Keyboard.textButton({
-		label: 'Cупер-админ',
+		label: 'Владелец',
 		color: 'negative',
 	}),
 ]
+
+export const addAdmin = [
+    Keyboard.textButton({
+        label: 'Назначить администратора',
+        color: 'positive',
+    }),
+]
+
+export const deleteAdmin = [
+    Keyboard.textButton({
+        label: 'Снять администратора',
+        color: 'negative',
+    }),
+]
+
 
 export const settingsMenuMarkup = [
 	[

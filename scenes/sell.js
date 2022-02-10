@@ -1,28 +1,29 @@
-import '../mongodb.js'
-import Good from '../models/Good.js'
-import User from '../models/User.js'
-import CachedGood from '../models/CachedGood.js'
-import BotConfig from '../models/BotConfig.js'
+import config from 'config'
 
-import vk from '../commonVK.js'
+import Good from '../models/Good'
+import User from '../models/User'
+import CachedGood from '../models/CachedGood'
+import BotConfig from '../models/BotConfig'
+
+import vk from '../commonVK'
 import { StepScene } from '@vk-io/scenes'
 
-import baseSendMessage from '../baseSendMessage.js'
+import baseSendMessage from '../baseSendMessage'
 
-import keyboard from '../markup/keyboard.js'
+import keyboard from '../markup/keyboard'
 
-import answerMarkup from '../markup/answerMarkup.js'
-import { baseMarkup } from '../markup/baseMarkup.js'
-import menuMarkup from '../markup/menuMarkup.js'
-import cityMarkup from '../markup/cityMarkup.js'
-import previousMarkup from '../markup/previousMarkup.js'
+import answerMarkup from '../markup/answerMarkup'
+import { baseMarkup } from '../markup/baseMarkup'
+import menuMarkup from '../markup/menuMarkup'
+import cityMarkup from '../markup/cityMarkup'
+import previousMarkup from '../markup/previousMarkup'
 
-import generateImage from '../utils/generateImage.js'
+import generateImage from '../utils/generateImage'
 import getUserName from '../utils/getUserName.js'
-import getGoodFromStockx from '../utils/getGoodFromStockx.js'
-import convertURL from '../utils/convertURL.js'
+import getGoodFromStockx from '../utils/getGoodFromStockx'
+import convertURL from '../utils/convertURL'
 
-const profileScene = [
+const sellScene = [
 	new StepScene('sell', [
 		// Обработка ссылки
 		async ctx => {
@@ -276,8 +277,7 @@ const profileScene = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
-					message:
-						'❗️ Укажите город, в котором осуществляется продажа. Если города нет в списке, введите название вручную.',
+					message: '❗️ Укажите город, в котором осуществляется продажа. Если города нет в списке, введите название вручную.',
 					keyboard: keyboard([...cityMarkup, ...previousMarkup]),
 				})
 
@@ -299,15 +299,18 @@ const profileScene = [
 					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
 				})
 
-			if (ctx.text == 'Назад')
-				return ctx.scene.step.go(4)
-
-            if (ctx.text == 'Да')
-			    ctx.scene.state.hasDelivery = '✅'
-            else if (ctx.text == 'Нет')
-                ctx.scene.state.hasDelivery = '❌'
-            else 
-                return
+            switch (ctx.text) {
+                case 'Назад':
+                    return ctx.scene.step.go(4)
+                case 'Да':
+                    ctx.scene.state.hasDelivery = '✅'
+                    break
+                case 'Нет':
+                    ctx.scene.state.hasDelivery = '❌'
+                    break
+                default:
+                    return
+            }
 
 			ctx.scene.step.next()
 		},
@@ -316,20 +319,23 @@ const profileScene = [
             // Примерка доступна если у товара есть размер
             if (ctx.scene.state.selectedSizes?.length) {
                 if (ctx.scene.step.firstTime || !ctx.text)
-				return ctx.send({
-					message: '❗️ Укажите, доступна ли примерка',
-					keyboard: keyboard([...answerMarkup, ...previousMarkup]),
-				})
+                    return ctx.send({
+                        message: '❗️ Укажите, доступна ли примерка',
+                        keyboard: keyboard([...answerMarkup, ...previousMarkup]),
+                    })
 
-                if (ctx.text == 'Назад')
-                    return ctx.scene.step.go(5)
-
-                if (ctx.text == 'Да')
-                    ctx.scene.state.hasFitting = '✅'
-                else if (ctx.text == 'Нет')
-                    ctx.scene.state.hasFitting = '❌'
-                else 
-                    return
+                switch (ctx.text) {
+                    case 'Назад':
+                        return ctx.scene.step.go(5)
+                    case 'Да':
+                        ctx.scene.state.hasFitting = '✅'
+                        break
+                    case 'Нет':
+                        ctx.scene.state.hasFitting = '❌'
+                        break
+                    default:
+                        return
+                }
             }
 
 			ctx.scene.step.next()
@@ -388,11 +394,12 @@ const profileScene = [
                         }
 
 
-                        goods.forEach(async good => 
-                            await(new Good(good)).save()
-                        )
+                        goods.forEach(async good => await(new Good(good)).save())
 
                         await BotConfig.updateOne({ $inc: { 'stats.countGoods': goods.length } })
+
+                        if (config.has('messages.sell.after'))
+                            ctx.send(config.get('messages.sell.after'))
 
                         if (goods.length > 1)
                             ctx.send({
@@ -405,6 +412,7 @@ const profileScene = [
                                 keyboard: keyboard(baseMarkup),
                             })
 
+
                         ctx.scene.step.next()					
                     } catch (e) {
                         console.log(e)
@@ -413,12 +421,11 @@ const profileScene = [
                     }
                 }
     
-                if (ctx.text == 'Нет') {
+                if (ctx.text == 'Нет')
                     ctx.scene.step.go(0)
-                }
             }
 		},
 	]),
 ]
 
-export default profileScene
+export default sellScene

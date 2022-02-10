@@ -1,0 +1,23 @@
+{
+	"configName": "TEST",
+	"mongoURL": "123123",
+
+	"token": "",
+	"groupID": 111111,
+
+	"onlySubscriber": true,
+	"onlyNameSearch": false,
+
+	"proxyList": [],
+
+	"messages": {
+		"main": {
+			"base": "Привет. Это SEARCH_BOT — Чат-бот, помогающий людям найти или продать лимитированную одежду/кроссовки/аксессуары. Что хочешь сделать?",
+			"faq": "SDFSDF",
+			"unknown": "❗ Неизвестная команда. Выбери команду, нажав на любую кнопку"
+		},
+		"search": {
+			"after": "SDFSDF"
+		}
+	}
+}

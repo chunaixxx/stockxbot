@@ -1,5 +1,3 @@
-import writeBody from './writebody.js'
-
 export default res => {
     if (res.statusCode !== 200 && res.statusCode !== 204){
         // writeBody(res.body);

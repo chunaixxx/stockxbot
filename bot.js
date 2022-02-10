@@ -1,47 +1,38 @@
-import './mongodb.js'
+import config from 'config'
+console.log('CONFIG: ' + config.get('configName'))
 
-import User from './models/User.js'
+import './mongodb'
+import vk from './commonVK'
 
-import { HearManager } from '@vk-io/hear'
-import { QuestionManager } from 'vk-io-question'
 import { SessionManager } from '@vk-io/session'
 import { SceneManager } from '@vk-io/scenes'
 
-import baseSendMessage from './baseSendMessage.js'
-
-import searchScene from './scenes/search.js'
-import sellScene from './scenes/sell.js'
-import profileScene from './scenes/profile.js'
-import adminScene from './scenes/admin.js'
-import superadminScene from './scenes/superadmin.js'
-
-import getUserName from './utils/getUserName.js'
-import { resetSearchInfo } from './utils/updateSearchInfo.js'
-
-import vk from './commonVK.js'
+import { skipBotMessage, skipChat, checkOnlySub, checkUser } from './middleware'
+import baseSendMessage from './baseSendMessage'
+import { searchScene, sellScene, profileScene, adminScene, superadminScene } from './scenes'
 
 const sessionManager = new SessionManager()
 const sceneManager = new SceneManager()
-const questionManager = new QuestionManager()
-const hearManager = new HearManager()
 
-vk.updates.use((ctx, next) => {
-    if (ctx.isChat) return
-    else next()
-})
+// middlewares
+vk.updates.on('message', skipBotMessage)
+vk.updates.on('message', skipChat)
+vk.updates.on('message', checkOnlySub)
+vk.updates.on('message', checkUser)
 
 vk.updates.on('message_new', sessionManager.middleware)
 vk.updates.on('message_new', sceneManager.middleware)
 vk.updates.on('message_new', sceneManager.middlewareIntercept)
-vk.updates.use(questionManager.middleware)
-vk.updates.on('message', hearManager.middleware)
+//
 
 vk.updates.on('message_new', ctx => baseSendMessage(ctx))
 
+// scenes
 sceneManager.addScenes(searchScene)
 sceneManager.addScenes(sellScene)
 sceneManager.addScenes(profileScene)
 sceneManager.addScenes(adminScene)
 sceneManager.addScenes(superadminScene)
+//
 
 vk.updates.startPolling()

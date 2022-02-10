@@ -1,33 +1,29 @@
 {
-  "name": "vkbotnew",
-  "version": "1.0.0",
-  "description": "",
-  "main": "bot1.js",
-  "scripts": {
-    "start": "nodemon bot"
-  },
-  "type": "module",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@vk-io/hear": "^1.1.0",
-    "@vk-io/scenes": "^1.1.0",
-    "@vk-io/session": "^2.1.0",
-    "axios": "^0.24.0",
-    "dotenv": "^10.0.0",
-    "https-proxy-agent": "^5.0.0",
-    "mongodb": "^4.1.4",
-    "mongoose": "^6.0.13",
-    "node-vk-bot-api": "^3.5.0",
-    "postman-request": "^2.88.1-postman.30",
-    "request-promise": "^4.2.6",
-    "stockx-api": "^1.1.0",
-    "util": "^0.12.4",
-    "vk-io": "^4.4.0",
-    "vk-io-question": "^3.1.1"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.15"
-  }
+	"name": "searchbot",
+	"version": "1.0.0",
+	"description": "",
+	"main": "bot.js",
+	"scripts": {
+		"start": "cross-env NODE_APP_INSTANCE=$npm_config_group node --experimental-specifier-resolution=node bot.js",
+		"dev": "cross-env NODE_APP_INSTANCE=dev nodemon --experimental-specifier-resolution=node bot.js "
+	},
+	"type": "module",
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@vk-io/scenes": "^1.1.0",
+		"@vk-io/session": "^2.1.0",
+		"axios": "^0.24.0",
+		"config": "^3.3.7",
+		"mongodb": "^4.1.4",
+		"mongoose": "^6.0.13",
+		"node-vk-bot-api": "^3.5.0",
+		"postman-request": "^2.88.1-postman.30",
+		"vk-io": "^4.4.0"
+	},
+	"devDependencies": {
+		"cross-env": "^7.0.3",
+		"nodemon": "^2.0.15"
+	}
 }

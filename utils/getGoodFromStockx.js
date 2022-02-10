@@ -1,10 +1,15 @@
+import config from 'config'
 import fetchProductDetails from './fetchProductDetails.js'
 import getRandomProxy from './getRandomProxy.js';
 
 const getGoodFromStockx = async url => {
-	try {        
-        const randomProxy = process.env.PROXY_LIST ? getRandomProxy(process.env.PROXY_LIST.split(' ')) : null
+	try {
+        const proxyList = config.get('proxyList')
+
+        const randomProxy = proxyList ? getRandomProxy(proxyList) : null
         const response = await fetchProductDetails(url, { proxy: randomProxy })
+
+        console.log(randomProxy)
 
 		const sizes = [...response.variants].map(item => item.size)
 

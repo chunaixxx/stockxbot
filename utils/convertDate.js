@@ -5,7 +5,6 @@ const convertDate = ms => {
         day: 'numeric',
         hour: 'numeric',
         minute: 'numeric',
-        minute: 'numeric',
         timezone: 'UTC'
     };
 

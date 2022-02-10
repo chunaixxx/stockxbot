@@ -1,46 +1,35 @@
-import '../mongodb.js'
-import User from '../models/User.js'
-import BotConfig from '../models/BotConfig.js'
+import BotConfig from '../models/BotConfig'
 
 import { StepScene } from '@vk-io/scenes'
 
-import keyboard from '../markup/keyboard.js'
-import { settingsMenuMarkup } from '../markup/adminMarkup.js'
-import menuMarkup from '../markup/menuMarkup.js'
+import keyboard from '../markup/keyboard'
+import { settingsMenuMarkup } from '../markup/adminMarkup'
+import menuMarkup from '../markup/menuMarkup'
 
-import baseSendMessage from '../baseSendMessage.js'
-import previousMarkup from '../markup/previousMarkup.js'
+import baseSendMessage from '../baseSendMessage'
+import previousMarkup from '../markup/previousMarkup'
 
-import convertDate from '../utils/convertDate.js'
-import { resetSearchInfo } from '../utils/updateSearchInfo.js'
+import convertDate from '../utils/convertDate'
+import { resetSearchInfo } from '../utils/updateSearchInfo'
 
 const superadminScene = [
 	new StepScene('superadmin', [
 		async ctx => {
             if (ctx.scene.step.firstTime || !ctx.text) {
-                const lastAdminActions = (await BotConfig.findOne()).lastAdminActions
-
-                
-                let deleteGoods = lastAdminActions?.deleteAllGoods
-                let giveExtened = lastAdminActions?.giveExtendedAccess
-                let takeExtened = lastAdminActions?.takeExtendedAccess
+                const { deleteAllGoods, giveExtendedAccess, takeExtendedAccess } = (await BotConfig.findOne()).lastAdminActions
 
                 let sendString = `❗ Последние действия администраторов: \n\n`
 
-                if (deleteGoods?.adminName)
-                    sendString += `Удаление всех товаров пользователя:\n ${deleteGoods?.adminName} (ID ${deleteGoods?.adminID}), ${convertDate(deleteGoods?.dateOfAction)}\nID пользователя: ${deleteGoods?.userID} (vk.com/id${deleteGoods?.userID})\n\n`
-                else
-                    sendString += `Удаление всех товаров пользователя: Запись отсутствует\n\n`
+                const logBlock = (logTitle, { adminName, adminID, dateOfAction, userID}) => {
+                    if (adminName)
+                        return `${ logTitle }:\n ${adminName} (ID ${adminID}), ${convertDate(dateOfAction)}\nID пользователя: ${userID} (vk.com/id${userID})\n\n`
+                    else
+                        return `${ logTitle }: Запись отсутствует\n\n`                        
+                }
 
-                if (giveExtened?.adminName)
-                    sendString += `Выдача расширенного доступа:\n ${giveExtened?.adminName} (ID ${giveExtened?.adminID}), ${convertDate(giveExtened?.dateOfAction)}\nID пользователя: ${giveExtened?.userID} (vk.com/id${giveExtened?.userID})\n\n`
-                else
-                    sendString += `Выдача расширенного доступа: Запись отсутствует\n\n`
-
-                if (takeExtened?.adminName)
-                    sendString += `Удаление расширенного доступа:\n ${takeExtened?.adminName} (ID ${takeExtened?.adminID}), ${convertDate(takeExtened?.dateOfAction)}\nID пользователя: ${takeExtened?.userID} (vk.com/id${takeExtened?.userID})\n\n`
-                else
-                    sendString += `Удаление расширенного доступа: Запись отсутствует\n\n`
+                sendString += logBlock('Удаление всех товаров пользователя', deleteAllGoods)
+                sendString += logBlock('Выдача расширенного доступа', giveExtendedAccess)
+                sendString += logBlock('Удаление расширенного доступа', takeExtendedAccess)
 
                 sendString += '❗ Панель настроек чат-бота, выберите пункт для изменения параметров чат-бота'
 
@@ -50,20 +39,19 @@ const superadminScene = [
                 })
             }
 
-
             if (ctx.text == 'Меню') {
                 baseSendMessage(ctx)
                 return ctx.scene.leave()
             }
 
-            if (ctx.text == 'Время отката')
-                return ctx.scene.step.go(1)
-
-            if (ctx.text == 'Максимальное кол-во поисков')
-                return ctx.scene.step.go(2)
-
-            if (ctx.text == 'Максимальное кол-во товаров')
-                return ctx.scene.step.go(3)
+            switch (ctx.text) {
+                case 'Время отката':
+                    return ctx.scene.step.go(1)
+                case 'Максимальное кол-во поисков':
+                    return ctx.scene.step.go(2)
+                case 'Максимальное кол-во товаров':
+                    return ctx.scene.step.go(3)
+            }
 		},
 
         // Время отката

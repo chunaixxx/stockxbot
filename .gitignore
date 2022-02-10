@@ -1,3 +1,5 @@
 /node_modules/
-.env
 /images/
+/logs/
+config/*
+!config/example.json

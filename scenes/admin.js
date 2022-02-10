@@ -1,241 +1,249 @@
 import { StepScene } from '@vk-io/scenes'
 
-import baseSendMessage from '../baseSendMessage.js'
+import baseSendMessage from '../baseSendMessage'
 
-import keyboard from '../markup/keyboard.js'
+import keyboard from '../markup/keyboard'
+import { statsMarkup, selectMyIDMarkup, editUserMarkup, addAdmin, deleteAdmin, banMarkup, unBanMarkup } from '../markup/adminMarkup'
+import previousMarkup from '../markup/previousMarkup'
+import menuMarkup from '../markup/menuMarkup'
 
-import { adminMenuMarkup } from '../markup/adminMarkup.js'
-import previousMarkup from '../markup/previousMarkup.js'
-import menuMarkup from '../markup/menuMarkup.js'
+import { resetSearchInfo } from '../utils/updateSearchInfo'
 
-import { resetSearchInfo } from '../utils/updateSearchInfo.js'
+import User from '../models/User'
+import Good from '../models/Good'
+import BotConfig from '../models/BotConfig'
 
-import User from '../models/User.js'
-import Good from '../models/Good.js'
-import BotConfig from '../models/BotConfig.js'
-
-import logAdminActions from '../utils/logAdminActions.js'
+import logAdminActions from '../utils/logAdminActions'
+import convertDate from '../utils/convertDate'
+import formatFoundGoodsToMessages from '../utils/formatMessages/search/foundGoods.js'
 
 const adminScene = [
 	new StepScene('admin', [
 		async ctx => {
-            if (ctx.scene.step.firstTime || !ctx.text)
-                return ctx.send({
-                    message: 'Панель администратора',
-                    keyboard: keyboard([...adminMenuMarkup, ...menuMarkup])
-                })
+            ctx.scene.state.selectedUser = null
+			const admin = ctx.state.user
 
-            let admin = null
-            let action = null
+			if (ctx.scene.step.firstTime)
+				return ctx.send({
+					message: `${admin.username}, ты авторизован как администратор.\n\n❗ Чтобы отредактировать или посмотреть статистику пользователя отправь ID или перешли его сообщение`,
+					keyboard: keyboard([...statsMarkup, ...selectMyIDMarkup, ...menuMarkup]),
+				})
 
-			if (ctx.text == 'Меню') {
-				baseSendMessage(ctx)
+            switch (ctx.text) {
+                case 'Меню':
+                    baseSendMessage(ctx)
+                    return ctx.scene.leave()
+                case 'Статистика':
+                    return ctx.scene.step.go(7)
+                case 'Выбрать меня':
+                    ctx.scene.state.selectedUserId = admin.userId
+                    return ctx.scene.step.next()
+            }
+
+            // Ручной ввод ID
+            try {
+                let queryId = ctx.hasForwards ? ctx.forwards[0].senderId : ctx.text
+
+				const foundUser = await User.findOne({ userId: queryId }).exec()
+
+				if (foundUser) {
+                    ctx.scene.state.selectedUserId = foundUser.userId
+                    return ctx.scene.step.next()
+				} else {
+					return ctx.send({
+						message: '❗ Данный пользователь не найден в базе данных',
+						keyboard: keyboard([...statsMarkup, ...selectMyIDMarkup, ...menuMarkup]),
+					})
+				}
+			} catch (e) {
+				console.log(e)
+				ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
 				return ctx.scene.leave()
 			}
+		},
 
-            try {
-                admin = await User.findOne({ userId: ctx.senderId }).exec()
-            } catch (e) {
-                console.log(e)
-                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-                return ctx.scene.leave()
+        // Действие над пользователем
+		async ctx => {
+            const admin = ctx.state.user
+
+            const selectedUserId = ctx.scene.state.selectedUserId
+            const selectedUser = await User.findOne({ userId: selectedUserId }).exec()
+            ctx.scene.state.selectedUser = selectedUser
+
+            const { username, userId, searchInfo, extendedAccess, adminAccess, settingsAccess } = ctx.scene.state.selectedUser
+
+            if (ctx.scene.step.firstTime || !ctx.text) {
+                try {
+                    const countGoods = await Good.countDocuments({ sellerId: userId });
+    
+                    let title = `❗ @id${userId} (${ username })\n`
+    
+                    if (extendedAccess) title += 'Полный доступ'
+                    else title += 'Без доступа'
+    
+                    if (settingsAccess) title += ', владелец'
+                    else if (adminAccess) title += ', администратор'
+    
+                    const lastSearch = searchInfo.lastSearch ? convertDate(searchInfo.lastSearch) : 'отсутствует'
+
+                    ctx.send(`${ title }\n\nПоисков: ${ searchInfo.count } (Последний поиск: ${ lastSearch })\nТоваров: ${ countGoods }`)  
+                    
+                    const searchedGoods = await Good.find({ sellerId: userId })
+
+                    if (searchedGoods.length)
+                        ctx.send(`❗ Активные товары пользователя:`)
+
+                    let pages = formatFoundGoodsToMessages(searchedGoods)
+                    pages.forEach(async page => await ctx.send(page))
+                    
+                    const markup = []
+                    if (!settingsAccess || (settingsAccess && admin.userId == userId))
+                        markup.push(...editUserMarkup)
+
+                    if (admin.settingsAccess && admin.userId != userId && settingsAccess == false) {
+                        if (adminAccess)
+                            markup.push(...deleteAdmin)
+                        else
+                            markup.push(...addAdmin)
+                    }
+
+                    if (markup.length) {
+                        return ctx.send({
+                            message: '❗ Действие над пользователем',
+                            keyboard: keyboard([...markup, ...previousMarkup])
+                        })
+                    } else {
+                        return ctx.send({
+                            message: '❗ У вас нет доступа для управления этим пользователем',
+                            keyboard: keyboard([...markup, ...previousMarkup])
+                        })
+                    }
+
+                } catch (e) {
+                    console.log(e)
+                    ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+					return ctx.scene.leave()
+                }
             }
-            
-            if (ctx.text == 'Выдать расширенный доступ')
-                action = 'Выдать расширенный доступ'
-            
-            if (ctx.text == 'Забрать расширенный доступ')
-                action = 'Забрать расширенный доступ'
-            
-            if (ctx.text == 'Назначить администратора')
-                if (admin.settingsAccess)
-                    action = 'Назначить администратора'
-                else
-                    ctx.send('❗ Нет доступа')
-            
-            if (ctx.text == 'Снять администратора')
-                if (admin.settingsAccess)
-                    action = 'Снять администратора'
-                else
-                    ctx.send('❗ Нет доступа')
 
-            if (ctx.text == 'Удалить объявления пользователя')
-                action = 'Удалить объявления пользователя'
+            if (ctx.text == 'Назад') 
+                return ctx.scene.step.go(0)
 
-            if (ctx.text == 'Статистика')
-                return ctx.scene.step.go(7)
+            if (!settingsAccess || (settingsAccess && ctx.senderId == userId)) {
+                switch (ctx.text) {
+                    case 'Выдать расширенный доступ':
+                        return ctx.scene.step.go(2)
+                    case 'Забрать расширенный доступ':
+                        return ctx.scene.step.go(3)
+                    case 'Удалить объявления пользователя':
+                        return ctx.scene.step.go(4)
+                }
+            }
 
-            if (action) {
-                ctx.scene.state.action = action
-                ctx.scene.step.next()
+            if (admin.settingsAccess && admin.userId != userId && settingsAccess == false) {
+                if (ctx.text == 'Назначить администратора')
+                    return ctx.scene.step.go(5)
+                else if (adminAccess && ctx.text == 'Снять администратора')
+                    return ctx.scene.step.go(6)
             }
 		},
-        async ctx => {
-            if (ctx.scene.step.firstTime || !ctx.text)
-                return ctx.send({
-                    message: '❗ Укажи ID пользователя',
-                    keyboard: keyboard(previousMarkup)
-                })
 
-            if (ctx.text == 'Назад')
-				return ctx.scene.step.go(0)
-            
-            try {
-                const foundUser = await User.findOne({ userId: ctx.text }).exec()
+		// Выдать расширенный доступ
+		async ctx => {
+			const selectedUser = ctx.scene.state.selectedUser
 
-                if (foundUser) {
-                    ctx.scene.state.selectedUser = foundUser
+			if (selectedUser.extendedAccess) {
+				ctx.send('❗ Данный пользователь уже имеет расширенный доступ')
+				return ctx.scene.step.go(1)
+			} else {
+				try {
+					await logAdminActions(ctx.senderId, 'giveExtendedAccess', selectedUser.userId)
 
-                    switch (ctx.scene.state.action) {
-                        case 'Выдать расширенный доступ':
-                            return ctx.scene.step.go(2)
-                            break;
-                        case 'Забрать расширенный доступ':
-                            return ctx.scene.step.go(3)
-                            break;
-                        case 'Назначить администратора':
-                            return ctx.scene.step.go(4)
-                            break;
-                        case 'Снять администратора':
-                            return ctx.scene.step.go(5)
-                        case 'Удалить объявления пользователя':
-                            return ctx.scene.step.go(6)
-                    }
-                    
-                    ctx.scene.step.go(2)
-                } else {
-                    return ctx.send({
-                        message: '❗ Данный пользователь не найден в базе данных',
-                        keyboard: keyboard(previousMarkup)
-                    })
-                }
-            } catch (e) {
-                console.log(e)
-                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-                return ctx.scene.leave()
-            }
-        },
+					await User.updateOne(
+						{ _id: selectedUser._id },
+						{ $set: { extendedAccess: true } }
+					)
 
-        // Выдать расширенный доступ
-        async ctx => {
-            if (ctx.text == 'Назад')
-				return ctx.scene.step.go(0)
-
-            const selectedUser = ctx.scene.state.selectedUser
-
-            if (selectedUser.extendedAccess) {
-                ctx.send('❗ Данный пользователь уже имеет расширенный доступ')
-                return ctx.scene.step.go(0)
-            } else {
-                try {
-                    await logAdminActions(ctx.senderId, 'giveExtendedAccess', selectedUser.userId)
-
-                    await User.updateOne({ _id: selectedUser._id}, { $set: { extendedAccess: true } })
-                    ctx.send('❗ Пользователю успешно выдан расширенный доступ')
-                    return ctx.scene.step.go(0)
-                } catch (e) {
+					ctx.send('❗ Пользователю успешно выдан расширенный доступ')
+					
+                    return ctx.scene.step.go(1)
+				} catch (e) {
 					console.log(e)
 					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
 					return ctx.scene.leave()
-                }
-            }
-        },
+				}
+			}
+		},
 
-        // Забрать расширенный доступ
-        async ctx => {
-            if (ctx.text == 'Назад')
-                return ctx.scene.step.go(0)
+		// Забрать расширенный доступ
+		async ctx => {
+			const selectedUser = ctx.scene.state.selectedUser
 
-            const selectedUser = ctx.scene.state.selectedUser
+			if (selectedUser.extendedAccess) {
+				try {
+					await logAdminActions(
+						ctx.senderId,
+						'takeExtendedAccess',
+						selectedUser.userId
+					)
 
-            if (selectedUser.extendedAccess) {
-                try {
-                    await logAdminActions(ctx.senderId, 'takeExtendedAccess', selectedUser.userId)
+					await User.updateOne(
+						{ _id: selectedUser._id },
+						{
+							$set: {
+								extendedAccess: false,
+								'searchInfo.count': 0,
+								'searchInfo.lastSearch': null,
+							}
+						}
+					)
 
-                    await User.updateOne({ _id: selectedUser._id}, { $set: { 
-                        extendedAccess: false, 
-                        'searchInfo.count': 0,
-                        'searchInfo.lastSearch': null
-                    }})
-                    
-                    await resetSearchInfo(selectedUser.userId)
-                    ctx.send('❗ У пользователя снят расширенный доступ')
-                    return ctx.scene.step.go(0)
-                } catch (e) {
+					await resetSearchInfo(selectedUser.userId)
+
+					ctx.send('❗ У пользователя снят расширенный доступ')
+					return ctx.scene.step.go(1)
+				} catch (e) {
 					console.log(e)
 					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
 					return ctx.scene.leave()
-                }
-            } else {
-                ctx.send('❗ У пользователя нет расширенного доступа')
-                return ctx.scene.step.go(0)
-            }
-        },
+				}
+			} else {
+				ctx.send('❗ У пользователя нет расширенного доступа')
+				return ctx.scene.step.go(1)
+			}
+		},
+
+		// Удалить объявления пользователя
+		async ctx => {
+			const selectedUser = ctx.scene.state.selectedUser
+
+			try {
+				await logAdminActions(
+					ctx.senderId,
+					'deleteAllGoods',
+					selectedUser.userId
+				)
+				await Good.deleteMany({ sellerId: selectedUser.userId }),
+					ctx.send('❗ У пользователя удалены все объявления')
+				return ctx.scene.step.go(0)
+			} catch (e) {
+				console.log(e)
+				ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+				return ctx.scene.leave()
+			}
+		},
 
         // Назначить администратора
         async ctx => {
-            if (ctx.text == 'Назад')
-                return ctx.scene.step.go(0)
+        	const selectedUser = ctx.scene.state.selectedUser
 
-            const selectedUser = ctx.scene.state.selectedUser
-
-            if (selectedUser.adminAccess) {
-                ctx.send('❗ Данный пользователь уже имеет полномочия администратора')
-                return ctx.scene.step.go(0)
-            } else {
-                try {
-                    await User.updateOne({ _id: selectedUser._id}, { $set: { adminAccess: true } })
-                    ctx.send('❗ Пользователю успешно выданы полномочия администратора')
-                    return ctx.scene.step.go(0)
-                } catch (e) {
-					console.log(e)
-					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-					return ctx.scene.leave()
-                }
-            }
-        },
-
-        // Забрать полномочия администратора
-        async ctx => {
-            if (ctx.text == 'Назад')
-                return ctx.scene.step.go(0)
-
-            const selectedUser = ctx.scene.state.selectedUser
-
-            if (selectedUser.userId == ctx.senderId)
-                return ctx.send({
-                    message: '❗ Нельзя снять с себя полномочия администратора',
-                    keyboard: keyboard(previousMarkup)
-                })
-
-            if (selectedUser.adminAccess) {
-                try {
-                    await User.updateOne({ _id: selectedUser._id}, { $set: { adminAccess: false } })
-                    ctx.send('❗ У пользователя сняты полномочия администратора')
-                    return ctx.scene.step.go(0)
-                } catch (e) {
-					console.log(e)
-					ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-					return ctx.scene.leave()
-                }
-            } else {
-                ctx.send('❗ У пользователя нет полномочий администратора')
-                return ctx.scene.step.go(0)
-            }
-        },
-
-        // Удалить объявления пользователя
-        async ctx => {
-            if (ctx.text == 'Назад')
-                return ctx.scene.step.go(0)
-
-            const selectedUser = ctx.scene.state.selectedUser
-            
             try {
-                await logAdminActions(ctx.senderId, 'deleteAllGoods', selectedUser.userId)
-                await Good.deleteMany({ sellerId: selectedUser.userId }), 
-                ctx.send('❗ У пользователя удалены все объявления')
-                return ctx.scene.step.go(0)
+                await User.updateOne(
+                    { _id: selectedUser._id },
+                    { $set: { adminAccess: true } }
+                )
+                ctx.send('❗ Пользователю успешно выданы полномочия администратора')
+                return ctx.scene.step.go(1)
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
@@ -243,29 +251,46 @@ const adminScene = [
             }
         },
 
-        // Статистика
+        // Снять администратора
         async ctx => {
-            if (ctx.text == 'Назад')
-                return ctx.scene.step.go(0)
+        	const selectedUser = ctx.scene.state.selectedUser
 
             try {
-                const goodsActiveCount = (await Good.find()).length
-                const usersCount = (await User.find()).length
-                const otherStats = await BotConfig.findOne()
-    
-                let sendString = `❗ Общая статистика:\n\nПоиски: ${otherStats.stats.countSearch} (${otherStats.stats.countFoundSearch} из них найденых)\nУдаленные товары: ${otherStats.stats.countDelete}\nВсего товаров: ${otherStats.stats.countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}`
-    
-                return ctx.send({
-                    message: sendString,
-                    keyboard: keyboard(previousMarkup)
-                })   
+                await User.updateOne(
+                    { _id: selectedUser._id },
+                    { $set: { adminAccess: false } }
+                )
+                ctx.send('❗ У пользователя сняты полномочия администратора')
+                return ctx.scene.step.go(1)
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
                 return ctx.scene.leave()
             }
         },
-	])	
+        
+		// Статистика
+		async ctx => {
+			if (ctx.text == 'Назад') return ctx.scene.step.go(0)
+
+			try {
+				const goodsActiveCount = (await Good.find()).length
+				const usersCount = (await User.find()).length
+				const { countSearch, countFoundSearch, countDelete, countGoods} = (await BotConfig.findOne()).stats
+
+				let sendString = `📊 Общая статистика\n\nПоиски: ${countSearch} (${countFoundSearch} из них найденых)\nУдаленные товары: ${countDelete}\nВсего товаров: ${countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}`
+
+				return ctx.send({
+					message: sendString,
+					keyboard: keyboard(previousMarkup),
+				})
+			} catch (e) {
+				console.log(e)
+				ctx.send( '❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+				return ctx.scene.leave()
+			}
+		},
+	]),
 ]
 
 export default adminScene
