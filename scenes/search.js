@@ -136,6 +136,15 @@ const searchScene = [
                         keyboard: keyboard(previousMarkup)
                     })
 
+                const onlyLettersRegex = /[^a-zа-яё0-9\s]/gi
+                const isInvalid = onlyLettersRegex.test(ctx.text)
+
+                if (isInvalid)
+                    return ctx.send({
+                        message: `❗ В поиске разрешены только буквы и цифры. Попробуй еще раз`,
+                        keyboard: keyboard(previousMarkup)
+                    })
+
                 ctx.scene.state.userQuery = {
                     type: 'word',
                     value: ctx.text
