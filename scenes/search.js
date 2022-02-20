@@ -287,6 +287,9 @@ const searchScene = [
                         await incrementSearch(ctx.senderId)
                 } else {
                     ctx.send(`❗ Мы ничего не нашли на нашей площадке. Попробуй воспользоваться другим методом поиска или поставь другие фильтры.`)
+
+                    if (config.has('messages.search.notFound'))
+                        ctx.send(config.get('messages.search.notFound'))
                 }
 
                 // Обновить общую статистику бота
