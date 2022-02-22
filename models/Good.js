@@ -7,53 +7,53 @@ const goodSchema = new Schema({
 		required: true,
 	},
 
-	sellerName: { 
-		type: String, 
-		required: true
+	sellerName: {
+		type: String,
+		required: true,
 	},
 
-	goodName: { 
+	goodName: {
 		type: String,
 		index: true,
-		required: true
+		required: true,
 	},
 
-	imgUrl: { 
+	imgUrl: {
 		type: String,
-		required: true
+		required: true,
 	},
 
-    filename: { 
+	filename: {
 		type: String,
-		required: true
+		required: true,
 	},
 
 	link: {
 		type: String,
-		required: true
+		required: true,
 	},
 
-	size: { 
-		type: String, 
-		default: null
-	 },
-
-	price: { 
-		type: Number, 
-		required: true 
+	size: {
+		type: String,
+		default: null,
 	},
-	
+
+	price: {
+		type: Number,
+		required: true,
+	},
+
 	city: {
 		type: String,
 		required: true,
 	},
 
-    hasDelivery: {
+	hasDelivery: {
 		type: String,
 		required: true,
 	},
 
-    hasFitting: {
+	hasFitting: {
 		type: String,
 		default: null,
 	},
@@ -62,6 +62,21 @@ const goodSchema = new Schema({
 		type: Number,
 		default: 0,
 	},
+
+    isHide: {
+        type: Boolean,
+        default: false
+    },
+
+	createdAt: { 
+        type: Date, 
+        default: Date.now 
+    },
+
+	updatedAt: { 
+        type: Date, 
+        default: Date.now 
+    },
 })
 
 goodSchema.index({ goodName: 'text' })

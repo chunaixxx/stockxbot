@@ -10,7 +10,7 @@ import baseSendMessage from '../baseSendMessage'
 import keyboard from '../markup/keyboard'
 
 import { baseMarkup } from '../markup/baseMarkup'
-import { myAdsMarkup, myAdsMarkupNotSize, selectAllAds, allAdsSettings } from '../markup/myAdsMarkup'
+import { myAdsMarkup, myAdsMarkupNotSize, mainMenuProfile, allAdsSettings, profileNext } from '../markup/myAdsMarkup'
 import menuMarkup from '../markup/menuMarkup'
 import previousMarkup from '../markup/previousMarkup'
 import answerMarkup from '../markup/answerMarkup'
@@ -21,6 +21,31 @@ import { resetSearchInfo } from '../utils/updateSearchInfo'
 
 const profileScene = [
 	new StepScene('profile', [
+        async ctx => {
+            if (ctx.scene.step.firstTime || !ctx.text) {
+                try {
+                    const goods = await Good.find({ sellerId: ctx.senderId })
+    
+                    const someGoodIsHide = goods.some(good => good.isHide)
+    
+                    if (someGoodIsHide) {
+                        return ctx.send({
+                            message: '🔒 Твои товары пропали из поиска, потому что ты не обновлял их актуальность',
+                            keyboard: keyboard(...profileNext) 
+                        })
+                    } else {
+                        ctx.scene.step.next()
+                    }                    
+                } catch (e) {
+					console.log(e)
+					ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+					return ctx.scene.leave()
+				}
+            }
+
+            if (ctx.text == 'Продолжить')
+                ctx.scene.step.next()
+        },
 		// Показ объявлений
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text || ctx.scene.state.isDelete) {
@@ -29,8 +54,8 @@ const profileScene = [
 					const user = ctx.state.user
 
                     // Товары пользователя
-					const goods = await Good.find({ sellerId: ctx.senderId })
-					ctx.scene.state.goods = goods
+                    const goods = await Good.find({ sellerId: ctx.senderId })
+                    ctx.scene.state.goods = goods
 
                     // Конфигурация бота
 					const { maxSearch, maxGoods, cooldownSearch } = await BotConfig.findOne()
@@ -71,12 +96,17 @@ const profileScene = [
                     let counter = 0;
                     const pages = []
 					goods.forEach((item, index) => {
-						const { goodName, size, price, city, views, hasDelivery, hasFitting } = item
+						const { goodName, size, price, city, views, hasDelivery, hasFitting, isHide } = item
+
+                        sendString += `[${index}] `
+
+                        if (isHide)
+                            sendString += '🔒 Неактивно 🔒 '
 
 						if (size)
-							sendString += `[${index}] ${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
+							sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
 						else
-							sendString += `[${index}] ${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
+							sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
 
                         counter += 1
 
@@ -97,7 +127,7 @@ const profileScene = [
 
                     return ctx.send({
                         message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
-                        keyboard: keyboard([...selectAllAds, ...menuMarkup]),
+                        keyboard: keyboard([...mainMenuProfile, ...menuMarkup]),
                     }) 
 				} catch (e) {
 					console.log(e)
@@ -111,7 +141,9 @@ const profileScene = [
                     baseSendMessage(ctx)
                     return ctx.scene.leave()
                 case 'Все объявления':
-                    return ctx.scene.step.go(7)
+                    return ctx.scene.step.go(8)
+                case 'Обновить товары':
+                    return ctx.scene.step.go(11)
             }
 
 			if (ctx.scene.state.goods[+ctx.text])
@@ -153,7 +185,7 @@ const profileScene = [
 			}
 
 			if (ctx.text == 'Назад')
-				return ctx.scene.step.go(0)
+				return ctx.scene.step.go(1)
 
 			if (ctx.text == 'Удалить') {
 				try {
@@ -170,7 +202,7 @@ const profileScene = [
 					} else {
 						ctx.send('❗ Товар успешно удален')
 						ctx.scene.state.isDelete = true
-						return ctx.scene.step.go(0)
+						return ctx.scene.step.go(1)
 					}
 				} catch (e) {
 					console.log(e)
@@ -180,16 +212,16 @@ const profileScene = [
 			}
 
 			if (ctx.text == 'Размер' && ctx.scene.state.selectedGood.size)
-				return ctx.scene.step.go(2)
+				return ctx.scene.step.go(3)
 
             if (ctx.text == 'Цена')
-				return ctx.scene.step.go(3)
+				return ctx.scene.step.go(4)
             
             if (ctx.text == 'Доставка')
-				return ctx.scene.step.go(4)
+				return ctx.scene.step.go(5)
 
             if (ctx.text == 'Примерка' && ctx.scene.state.selectedGood.size)
-				return ctx.scene.step.go(5)
+				return ctx.scene.step.go(6)
 		},
 		// Размер
 		async ctx => {
@@ -218,7 +250,7 @@ const profileScene = [
 			}
 
 			if (ctx.text == 'Назад')
-				return ctx.scene.step.go(1)
+				return ctx.scene.step.go(2)
 
 			const selectedGoodFromStocx = ctx.scene.state.selectedGoodFromStocx
 
@@ -241,7 +273,7 @@ const profileScene = [
 				})
 
             ctx.scene.state.newGood.size = ctx.text.toUpperCase()
-            ctx.scene.step.go(6)
+            ctx.scene.step.go(7)
 		},
 		// Цена
 		async ctx => {
@@ -253,7 +285,7 @@ const profileScene = [
 				})
 
 			if (ctx.text == 'Назад')
-				return ctx.scene.step.go(1)
+				return ctx.scene.step.go(2)
 
 			if (+ctx.scene.state.selectedGood.price == +ctx.text)
 				return ctx.send({
@@ -272,7 +304,7 @@ const profileScene = [
 				return ctx.send('❗ Минимальная стоимость товара 1руб.')
 
 			ctx.scene.state.newGood.price = ctx.text
-			ctx.scene.step.go(6)
+			ctx.scene.step.go(7)
 		},
         // Доставка
 		async ctx => {
@@ -283,7 +315,7 @@ const profileScene = [
 				})
 
 			if (ctx.text == 'Назад')
-				return ctx.scene.step.go(1)
+				return ctx.scene.step.go(2)
 
             const hasDelivery = ctx.scene.state.selectedGood.hasDelivery
 
@@ -300,7 +332,7 @@ const profileScene = [
             else 
                 return
 
-            ctx.scene.step.go(6)
+            ctx.scene.step.go(7)
 		},
         // Примерка
 		async ctx => {
@@ -311,7 +343,7 @@ const profileScene = [
 				})
 
 			if (ctx.text == 'Назад')
-				return ctx.scene.step.go(1)
+				return ctx.scene.step.go(2)
 
             const hasFitting = ctx.scene.state.selectedGood.hasFitting
 
@@ -328,7 +360,7 @@ const profileScene = [
             else 
                 return
 
-            ctx.scene.step.go(6)
+            ctx.scene.step.go(7)
 		},
 		// Уточнение по изменению товара
 		async ctx => {
@@ -373,10 +405,10 @@ const profileScene = [
                         const newGood = ctx.scene.state.newGood
                         await Good.findOneAndUpdate({'_id': newGood._id }, newGood);
                         ctx.send('❗ Товар успешно изменен')
-                        return ctx.scene.step.go(0)
+                        return ctx.scene.step.go(1)
                     case 'Нет':
                         ctx.send('❗ Возвращаю тебя к панели редактирования объявления')
-                        return ctx.scene.step.go(1)
+                        return ctx.scene.step.go(2)
                 }
             } catch (e) {
                 console.log(e)
@@ -394,11 +426,11 @@ const profileScene = [
 
             switch (ctx.text) {
                 case 'Назад':
-                    return ctx.scene.step.go(0)
+                    return ctx.scene.step.go(1)
                 case 'Доставка':
-                    return ctx.scene.step.go(8)
-                case 'Примерка':
                     return ctx.scene.step.go(9)
+                case 'Примерка':
+                    return ctx.scene.step.go(10)
             }
         },
         // Настройка доставки для всех объявлений
@@ -412,7 +444,7 @@ const profileScene = [
             try {
                 switch (ctx.text) {
                     case 'Назад':
-                        return ctx.scene.step.go(7)
+                        return ctx.scene.step.go(8)
                     case 'Да':
                         await Good.updateMany({ 'sellerId': ctx.peerId }, { hasDelivery: '✅' })
                         ctx.send('✅ Доставка теперь доступна для всех твоих товаров.')
@@ -423,7 +455,7 @@ const profileScene = [
                         break;
                 }
 
-                return ctx.scene.step.go(0)
+                return ctx.scene.step.go(1)
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
@@ -441,7 +473,7 @@ const profileScene = [
             try {
                 switch (ctx.text) {
                     case 'Назад':
-                        return ctx.scene.step.go(7)
+                        return ctx.scene.step.go(8)
                     case 'Да':
                         await Good.updateMany(
                             { 'sellerId': ctx.peerId, 'hasFitting': { "$in": ['✅', '❌'] } }, 
@@ -458,12 +490,26 @@ const profileScene = [
                         break;
                 }             
 
-                return ctx.scene.step.go(0)
+                return ctx.scene.step.go(1)
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
                 return ctx.scene.leave()
             }     
+        },
+
+        async ctx => {
+            try {
+                await Good.updateMany({ sellerId: ctx.peerId}, { isHide: false, updatedAt: Date.now() })
+
+                ctx.send('✅ Товары были успешно обновлены')
+
+                return ctx.scene.step.go(1)
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+                return ctx.scene.leave()
+            }
         }
 	]),
 ]

@@ -266,7 +266,7 @@ const searchScene = [
                 // Запрос и фильтры пользователя
                 const { userQuery, sizeRange, range: priceRange } = ctx.scene.state
 
-                const searchedGoods = await searchGoods({ userQuery, sizeRange, priceRange })
+                const searchedGoods = await searchGoods({ userQuery, sizeRange, priceRange, isHide: false })
 
                 if (searchedGoods.length) {
                         ctx.send(`❗ По твоему запросу найдены такие объявления:`)

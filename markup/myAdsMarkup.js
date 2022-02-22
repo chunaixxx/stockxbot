@@ -57,14 +57,31 @@ export const myAdsMarkup = [
 	],
 ]
 
-export const selectAllAds = [
+export const mainMenuProfile = [
 	[
 		Keyboard.textButton({
 			label: 'Все объявления',
 			color: 'positive',
 		}),
 	],
+
+    [
+		Keyboard.textButton({
+			label: 'Обновить товары',
+			color: 'positive',
+		}),
+	],
 ]
+
+export const profileNext = [
+	[
+		Keyboard.textButton({
+			label: 'Продолжить',
+			color: 'default',
+		}),
+	],
+]
+
 
 export const allAdsSettings = [
     [

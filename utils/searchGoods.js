@@ -1,9 +1,10 @@
 import Good from '../models/Good'
 import sortGoodsByPrice from './sortGoodsByPrice'
 
-export default async ({ userQuery, sizeRange, priceRange }) => {
+export default async ({ userQuery, sizeRange, priceRange, isHide }) => {
 	const query = {
 		price: { $gte: priceRange[0], $lte: priceRange[1] },
+        isHide
 	}
 
 	if (sizeRange.length) query.size = { $in: sizeRange }
