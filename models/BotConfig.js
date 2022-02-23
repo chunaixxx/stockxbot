@@ -41,7 +41,19 @@ const botConfigSchema = new Schema({
 		countGoods: {
 			type: Number,
 			default: 0
-		}
+		},
+
+        archiving: {
+            lastDate: {
+                type: Date,
+                default: Date.now()
+            },
+
+            lastCount: {
+                type: Number,
+                default: null
+            }
+        }
 	},
 
 	lastAdminActions: {
