@@ -28,8 +28,6 @@ const generateImage = async (url, filename) => {
 			},
 		})
 
-		console.log(proxy)
-
 		const response = await axios({
 			url,
 			method: 'GET',
