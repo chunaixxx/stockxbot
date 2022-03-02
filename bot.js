@@ -2,6 +2,8 @@ import config from 'config'
 console.log('CONFIG: ' + config.get('configName'))
 
 import './mongodb'
+import './cron'
+
 import vk from './commonVK'
 
 import { SessionManager } from '@vk-io/session'

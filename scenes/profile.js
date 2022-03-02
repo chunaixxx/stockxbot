@@ -1,5 +1,7 @@
+import config from 'config'
+
 import Good from '../models/Good'
-import User from '../models/User'
+import MailingUser from '../models/MailingUser'
 import BotConfig from '../models/BotConfig'
 
 import vk from '../commonVK'
@@ -10,7 +12,7 @@ import baseSendMessage from '../baseSendMessage'
 import keyboard from '../markup/keyboard'
 
 import { baseMarkup } from '../markup/baseMarkup'
-import { myAdsMarkup, myAdsMarkupNotSize, mainMenuProfile, allAdsSettings, profileNext } from '../markup/myAdsMarkup'
+import { myAdsMarkup, myAdsMarkupNotSize, mainMenuProfile, allAdsSettings, profileNext, subsribeMailing, unsubsribeMailing } from '../markup/myAdsMarkup'
 import menuMarkup from '../markup/menuMarkup'
 import previousMarkup from '../markup/previousMarkup'
 import answerMarkup from '../markup/answerMarkup'
@@ -125,9 +127,14 @@ const profileScene = [
                     ctx.scene.state.selectedGood = null
                     ctx.scene.state.newGood = null
 
+                    const mailingArchiveUser = await MailingUser.findOne({ userId: ctx.senderId, type: 'archive' })
+                    ctx.scene.state.mailingArchiveUser = mailingArchiveUser
+
+                    const subscribeMarkup = mailingArchiveUser ? unsubsribeMailing : subsribeMailing
+
                     return ctx.send({
                         message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
-                        keyboard: keyboard([...mainMenuProfile, ...menuMarkup]),
+                        keyboard: keyboard([...mainMenuProfile, ...subscribeMarkup, ...menuMarkup]),
                     }) 
 				} catch (e) {
 					console.log(e)
@@ -145,6 +152,36 @@ const profileScene = [
                 case 'Обновить товары':
                     return ctx.scene.step.go(11)
             }
+
+            // Рассылка архивации товаров
+            try {
+                const mailingArchiveUser = ctx.scene.state.mailingArchiveUser
+
+                if (ctx.text == 'Напоминать об актуальности' && !mailingArchiveUser) {
+                    const mailingUser = new MailingUser({
+                        userId: ctx.senderId,
+                        type: 'archive',
+                        groupId: config.get('groupID')
+                    })
+
+                    await mailingUser.save()
+
+                    ctx.send('✅ Ты подписался на рассылку которая будет напоминать тебе об актуальности твоих товаров за день до архивации!')
+                    return ctx.scene.step.go(1)
+                }
+    
+                if (ctx.text == 'Не напоминать об актуальности' && mailingArchiveUser) {
+                    await MailingUser.deleteOne({ userId: ctx.senderId, type: 'archive'})
+
+                    ctx.send('❌ Ты отписался от рассылки которая будет напоминать тебе об актуальности твоих товаров. Будь аккуратнее, не забывай обновлять товары!')
+                    return ctx.scene.step.go(1)
+                }                
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+                return ctx.scene.leave()
+            }
+
 
 			if (ctx.scene.state.goods[+ctx.text])
 				ctx.scene.step.next()
@@ -368,13 +405,20 @@ const profileScene = [
 				try {
                     const { selectedGood, newGood } = ctx.scene.state
 
-                    const { imgUrl, filename } = selectedGood
-					await generateImage(imgUrl, filename)
+                    let { imgUrl, filename } = selectedGood
+                    let attachment = null
 
-					const attachment = await vk.upload.messagePhoto({
-						peer_id: ctx.peerId,
-						source: { value: `./images/${filename}.jpg` }
-					})
+
+                    try {
+                        await generateImage(imgUrl, filename)
+
+                        attachment = await vk.upload.messagePhoto({
+                            peer_id: ctx.peerId,
+                            source: { value: `./images/${filename}.jpg` }
+                        })                        
+                    } catch (e) {
+                        console.log(e)
+                    }
 
 					let strOldItem = ''
 					let strNewItem = ''
@@ -497,7 +541,7 @@ const profileScene = [
                 return ctx.scene.leave()
             }     
         },
-
+        // Обновление актуальности товаров
         async ctx => {
             try {
                 await Good.updateMany({ sellerId: ctx.peerId}, { isHide: false, updatedAt: Date.now() })

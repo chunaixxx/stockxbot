@@ -73,6 +73,24 @@ export const mainMenuProfile = [
 	],
 ]
 
+export const subsribeMailing = [
+	[
+		Keyboard.textButton({
+			label: 'Напоминать об актуальности',
+			color: 'positive',
+		}),
+	],    
+]
+
+export const unsubsribeMailing = [
+	[
+		Keyboard.textButton({
+			label: 'Не напоминать об актуальности',
+			color: 'negative',
+		}),
+	],    
+]
+
 export const profileNext = [
 	[
 		Keyboard.textButton({
