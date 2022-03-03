@@ -1,5 +1,8 @@
 import { StepScene } from '@vk-io/scenes'
 
+import moment from 'moment'
+
+
 import baseSendMessage from '../baseSendMessage'
 
 import keyboard from '../markup/keyboard'
@@ -11,6 +14,7 @@ import { resetSearchInfo } from '../utils/updateSearchInfo'
 
 import User from '../models/User'
 import Good from '../models/Good'
+import MailingUser from '../models/MailingUser'
 import BotConfig from '../models/BotConfig'
 
 import logAdminActions from '../utils/logAdminActions'
@@ -276,9 +280,21 @@ const adminScene = [
 			try {
 				const goodsActiveCount = (await Good.find()).length
 				const usersCount = (await User.find()).length
+				const mailingCount = (await MailingUser.find()).length
+
 				const { countSearch, countFoundSearch, countDelete, countGoods} = (await BotConfig.findOne()).stats
 
-				let sendString = `📊 Общая статистика\n\nПоиски: ${countSearch} (${countFoundSearch} из них найденых)\nУдаленные товары: ${countDelete}\nВсего товаров: ${countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}`
+				let sendString = `📊 Общая статистика\n\nПоиски: ${countSearch} (${countFoundSearch} из них найденых)\nУдаленные товары: ${countDelete}\nВсего товаров: ${countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}\n Подписаны на рассылку архивации: ${mailingCount}\n\n`
+
+
+                let weekBuyers = await User.find({ 
+                    'searchInfo.lastSearch': {
+                        $gte: moment().subtract(7, 'days'),
+                        $lte: moment(),
+                    }
+                })
+
+                sendString += `📊 Статистика за последние 7 дней\n\nПокупатели которые нашли товар: ${weekBuyers.length}`
 
 				return ctx.send({
 					message: sendString,

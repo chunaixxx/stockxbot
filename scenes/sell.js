@@ -401,14 +401,17 @@ const sellScene = [
                         if (config.has('messages.sell.after'))
                             ctx.send(config.get('messages.sell.after'))
 
+
+                        const updateMessage = '\n\n❕ Если не обновлять товары, то спустя время они могут уйти в архив. Подпишись на напоминания в профиле чтобы такого не произошло'
+
                         if (goods.length > 1)
                             ctx.send({
-                                message: '❗ Товары успешно добавлены. Ты можешь увидеть свои объявления в пункте — Профиль',
+                                message: '❗ Товары успешно добавлены. Ты можешь увидеть свои объявления в пункте — Профиль' + updateMessage,
                                 keyboard: keyboard(baseMarkup),
                             })
                         else
                             ctx.send({
-                                message: '❗ Товар успешно добавлен. Ты можешь увидеть свое объявление в пункте — Профиль',
+                                message: '❗ Товар успешно добавлен. Ты можешь увидеть свое объявление в пункте — Профиль' + updateMessage,
                                 keyboard: keyboard(baseMarkup),
                             })
 
