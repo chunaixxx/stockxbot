@@ -133,7 +133,10 @@ const profileScene = [
     
                         return ctx.send({
                             message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
-                            keyboard: keyboard([...mainMenuProfile, ...subscribeMarkup, ...subscribeSearchGood, ...menuMarkup]),
+                            keyboard: user.extendedAccess ? 
+                                    keyboard([...mainMenuProfile, ...subscribeMarkup, ...subscribeSearchGood, ...menuMarkup]) 
+                                : 
+                                    keyboard([...mainMenuProfile, ...subscribeMarkup, ...menuMarkup]),
                         }) 
                     }
 				} catch (e) {
