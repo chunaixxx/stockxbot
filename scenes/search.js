@@ -2,6 +2,7 @@ import config from 'config'
 
 import Good from '../models/Good'
 import BotConfig from '../models/BotConfig'
+import MailingUser from '../models/MailingUser'
 
 import { StepScene } from '@vk-io/scenes'
 
@@ -10,7 +11,7 @@ import baseSendMessage from '../baseSendMessage'
 import keyboard from '../markup/keyboard'
 
 import menuMarkup from '../markup/menuMarkup'
-import { methodSearchMarkup, methodSearchOnlyNameMarkup } from '../markup/methodSearch'
+import { methodSearchMarkup, methodSearchOnlyNameMarkup, subscribeSearch } from '../markup/methodSearch'
 import skipMarkup from '../markup/skipMarkup'
 import previousMarkup from '../markup/previousMarkup'
 
@@ -176,7 +177,8 @@ const searchScene = [
 			
             ctx.scene.state.userQuery = {
                 type: 'link',
-                value: link
+                value: link,
+                goodName: goodFromStockx.name
             }
 
 			ctx.scene.step.go(3)
@@ -226,8 +228,7 @@ const searchScene = [
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
-					message:
-						'❗ Использовать фильтрацию по цене? Если да, то укажите диапазон.\n\nПример: 10000-200000',
+					message: '❗ Использовать фильтрацию по цене? Если да, то укажите диапазон.\n\nПример: 10000-200000',
 					keyboard: keyboard([...previousMarkup, ...skipMarkup]),
 				})
                 
@@ -295,13 +296,76 @@ const searchScene = [
                 // Обновить общую статистику бота
                 await BotConfig.updateOne({ $inc: { 'stats.countSearch': 1 } })
 
-                return ctx.scene.step.go(0)
+                return ctx.scene.step.next()
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
                 return ctx.scene.leave()
             }
 		},
+        async ctx => {
+            if (ctx.state.user.extendedAccess == false)
+                return ctx.scene.step.go(0)
+
+            const { userQuery } = ctx.scene.state
+
+            if (userQuery.type !== 'link')
+                return ctx.scene.step.go(0)   
+
+            if (ctx.scene.step.firstTime || !ctx.text) 
+                return ctx.send({
+                    message: '✉️ У тебя есть возможность подписаться на поиск этого товара. Бот сам напишет тебе, когда найдет товар по твоим параметрам.',
+                    keyboard: keyboard(subscribeSearch)
+                })
+
+
+            if (ctx.text == 'Пропустить')
+                return ctx.scene.step.go(0)
+
+            if (ctx.text == 'Подписаться') {
+                try {
+                    const { userQuery, sizeRange, range: priceRange } = ctx.scene.state
+
+                    const mailingIsExists = await MailingUser.findOne({
+                        userId: ctx.senderId,
+                        type: 'subscribeSearch',
+                        'data.userQuery.value': userQuery.value
+                    })
+
+                    console.log(mailingIsExists);
+
+                    if (mailingIsExists) {
+                        ctx.send('❌ Ты уже был подписан на этот товар. Удалить подписку можно в профиле')
+                        return ctx.scene.step.go(0)     
+                    }
+
+
+                    const mailingUser = new MailingUser({
+                        userId: ctx.senderId,
+                        type: 'subscribeSearch',
+                        groupId: config.get('groupID'),
+                        data: {
+                            userQuery, 
+                            sizeRange, 
+                            priceRange: {
+                                min: priceRange[0],
+                                max: priceRange[1]
+                            }
+                        }
+                    })
+
+                    await mailingUser.save()
+
+                    ctx.send('✉️ Ты успешно подписался на поиск товара. Отслеживать свои подписки можно в профиле')
+                    return ctx.scene.step.go(0)                    
+                } catch (e) {
+                    console.log(e)
+                    ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                    return ctx.scene.leave()
+                }
+            }
+                
+        }
 	])	
 ]
 

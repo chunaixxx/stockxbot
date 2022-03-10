@@ -5,7 +5,8 @@
 	"main": "bot.js",
 	"scripts": {
 		"start": "cross-env node --experimental-specifier-resolution=node bot.js",
-		"dev": "cross-env NODE_APP_INSTANCE=dev nodemon --experimental-specifier-resolution=node bot.js "
+		"dev": "cross-env NODE_APP_INSTANCE=dev nodemon --experimental-specifier-resolution=node bot.js",
+		"dev2": "cross-env NODE_APP_INSTANCE=dev2 nodemon --experimental-specifier-resolution=node bot.js"
 	},
 	"type": "module",
 	"keywords": [],
@@ -25,7 +26,8 @@
 		"postman-request": "^2.88.1-postman.30",
 		"sharp": "^0.30.1",
 		"tunnel": "^0.0.6",
-		"vk-io": "^4.4.0"
+		"vk-io": "^4.4.0",
+		"ws": "^8.5.0"
 	},
 	"devDependencies": {
 		"cross-env": "^7.0.3",

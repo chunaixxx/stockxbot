@@ -16,6 +16,11 @@ const mailingUserSchema = new Schema({
 		type: Number,
 		required: true,
 	},
+
+    data: {
+        type: Object,
+        default: null,
+    }
 })
 
 const MailingUser = mongoose.model('MailingUser', mailingUserSchema)

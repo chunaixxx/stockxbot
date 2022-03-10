@@ -91,6 +91,16 @@ export const unsubsribeMailing = [
 	],    
 ]
 
+
+export const subscribeSearchGood = [
+	[
+		Keyboard.textButton({
+			label: 'Подписка на поиск',
+			color: 'positive',
+		}),
+	],        
+]
+
 export const profileNext = [
 	[
 		Keyboard.textButton({

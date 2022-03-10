@@ -12,7 +12,7 @@ import baseSendMessage from '../baseSendMessage'
 import keyboard from '../markup/keyboard'
 
 import { baseMarkup } from '../markup/baseMarkup'
-import { myAdsMarkup, myAdsMarkupNotSize, mainMenuProfile, allAdsSettings, profileNext, subsribeMailing, unsubsribeMailing } from '../markup/myAdsMarkup'
+import { myAdsMarkup, myAdsMarkupNotSize, mainMenuProfile, allAdsSettings, profileNext, subsribeMailing, unsubsribeMailing, subscribeSearchGood } from '../markup/myAdsMarkup'
 import menuMarkup from '../markup/menuMarkup'
 import previousMarkup from '../markup/previousMarkup'
 import answerMarkup from '../markup/answerMarkup'
@@ -20,6 +20,7 @@ import answerMarkup from '../markup/answerMarkup'
 import getGoodFromStockx from '../utils/getGoodFromStockx'
 import generateImage from '../utils/generateImage'
 import { resetSearchInfo } from '../utils/updateSearchInfo'
+import formatSubcribesOnGoods from '../utils/formatMessages/formatSubcribesOnGoods'
 
 const profileScene = [
 	new StepScene('profile', [
@@ -84,58 +85,57 @@ const profileScene = [
 
 
 					if (goods.length === 0) {
-						ctx.send({
+						return ctx.send({
 							message: sendString + '❗ У тебя отсутствуют объявления. Попробуй создать их с помощью кнопки — Продать',
-							keyboard: keyboard(baseMarkup),
+							keyboard: user.extendedAccess ? keyboard([...subscribeSearchGood, ...menuMarkup]) : keyboard(menuMarkup),
 						})
-						return ctx.scene.leave()
-					}
+					} else {
+                        ctx.send(sendString)
 
-                    ctx.send(sendString)
-
-                    // Пагинация товаров на несколько сообщений
-                    sendString = ''
-                    let counter = 0;
-                    const pages = []
-					goods.forEach((item, index) => {
-						const { goodName, size, price, city, views, hasDelivery, hasFitting, isHide } = item
-
-                        sendString += `[${index}] `
-
-                        if (isHide)
-                            sendString += '🔒 Неактивно 🔒 '
-
-						if (size)
-							sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
-						else
-							sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
-
-                        counter += 1
-
-                        if (counter >= 20 || goods.length - 1 == index) {
-                            pages.push(sendString)
-                            sendString = ''
-                            counter = 0
-                        }
-					})
-
-                    for (const page of pages)
-                        ctx.send(page)
-                    //
-
-                    ctx.scene.state.isDelete = false
-                    ctx.scene.state.selectedGood = null
-                    ctx.scene.state.newGood = null
-
-                    const mailingArchiveUser = await MailingUser.findOne({ userId: ctx.senderId, type: 'archive' })
-                    ctx.scene.state.mailingArchiveUser = mailingArchiveUser
-
-                    const subscribeMarkup = mailingArchiveUser ? unsubsribeMailing : subsribeMailing
-
-                    return ctx.send({
-                        message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
-                        keyboard: keyboard([...mainMenuProfile, ...subscribeMarkup, ...menuMarkup]),
-                    }) 
+                        // Пагинация товаров на несколько сообщений
+                        sendString = ''
+                        let counter = 0;
+                        const pages = []
+                        goods.forEach((item, index) => {
+                            const { goodName, size, price, city, views, hasDelivery, hasFitting, isHide } = item
+    
+                            sendString += `[${index + 1}] `
+    
+                            if (isHide)
+                                sendString += '🔒 Неактивно 🔒 '
+    
+                            if (size)
+                                sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
+                            else
+                                sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
+    
+                            counter += 1
+    
+                            if (counter >= 20 || goods.length - 1 == index) {
+                                pages.push(sendString)
+                                sendString = ''
+                                counter = 0
+                            }
+                        })
+    
+                        for (const page of pages)
+                            ctx.send(page)
+                        //
+    
+                        ctx.scene.state.isDelete = false
+                        ctx.scene.state.selectedGood = null
+                        ctx.scene.state.newGood = null
+    
+                        const mailingArchiveUser = await MailingUser.findOne({ userId: ctx.senderId, type: 'archive' })
+                        ctx.scene.state.mailingArchiveUser = mailingArchiveUser
+    
+                        const subscribeMarkup = mailingArchiveUser ? unsubsribeMailing : subsribeMailing
+    
+                        return ctx.send({
+                            message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
+                            keyboard: keyboard([...mainMenuProfile, ...subscribeMarkup, ...subscribeSearchGood, ...menuMarkup]),
+                        }) 
+                    }
 				} catch (e) {
 					console.log(e)
 					ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
@@ -152,6 +152,10 @@ const profileScene = [
                 case 'Обновить товары':
                     return ctx.scene.step.go(11)
             }
+
+            if (ctx.text == 'Подписка на поиск' && ctx.state.user.extendedAccess)
+                return ctx.scene.step.go(12)
+            
 
             // Рассылка архивации товаров
             try {
@@ -182,14 +186,15 @@ const profileScene = [
                 return ctx.scene.leave()
             }
 
-
-			if (ctx.scene.state.goods[+ctx.text])
-				ctx.scene.step.next()
-			else
-				ctx.send({
-					message: '❗ Укажи действительный номер объявления',
-					keyboard: keyboard(menuMarkup),
-				})
+            if (ctx.scene.state.goods.length) {
+                if (ctx.scene.state.goods[+ctx.text - 1])
+                    ctx.scene.step.next()
+                else
+                    ctx.send({
+                        message: '❗ Укажи действительный номер объявления',
+                        keyboard: keyboard(menuMarkup),
+                    })
+            }
 		},
 		// Выбранный товар
 		async ctx => {
@@ -199,7 +204,7 @@ const profileScene = [
 
 				if (!ctx.scene.state.newGood) {
 					goods = ctx.scene.state.goods
-					selectedGood = goods[+ctx.text]
+					selectedGood = goods[+ctx.text - 1]
 					ctx.scene.state.selectedGood = selectedGood
 					ctx.scene.state.newGood = JSON.parse(JSON.stringify(selectedGood));
 				}
@@ -554,6 +559,58 @@ const profileScene = [
                 ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
                 return ctx.scene.leave()
             }
+        },
+        // Подписка на поиск
+        async ctx => {
+            try {
+                const subsribes = await MailingUser.find({
+                    userId: ctx.senderId,
+                    type: "subscribeSearch"
+                })
+
+
+                if (subsribes.length == 0) {
+                    ctx.send('❗ У тебя пока нет подписок на появления товара. Чтобы подписаться на товар, попробуй найти интересующий тебя товар по ссылке')
+                    return ctx.scene.step.go(1)
+                }
+
+                if (ctx.scene.step.firstTime || !ctx.text) {
+                    ctx.send('📩 Твои подписки на поиск товара. Бот сообщит тебе когда появится интересующий тебя товар')
+
+                    // Получить и вывести постранично найденные товары
+                    let pages = formatSubcribesOnGoods(subsribes)
+                    pages.forEach(async page => await ctx.send(page))
+
+                    return ctx.send({
+                        message: '❗ Введи номер (он указан в начале), чтобы удалить подписку на товар',
+                        keyboard: keyboard(previousMarkup)
+                    })
+                }
+
+                if (ctx.text == 'Назад')
+				    return ctx.scene.step.go(1)
+
+                let selectedId = +ctx.text - 1
+                let selectedSubcribe = subsribes[selectedId]
+
+
+                if (selectedSubcribe) {
+                    const goodName = selectedSubcribe.data.userQuery.goodName
+                    await MailingUser.deleteOne({ _id: selectedSubcribe._id })
+
+                    ctx.send(`✅ Ты успешно отписался от подписки на товар ${ goodName }`)
+                    return ctx.scene.step.go(12)
+                } else {
+                    ctx.send({
+                        message: '❗ Укажи действительный номер подписки',
+                        keyboard: keyboard(previousMarkup),
+                    })
+                }
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+                return ctx.scene.leave()
+            }            
         }
 	]),
 ]

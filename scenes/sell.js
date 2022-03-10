@@ -22,6 +22,7 @@ import generateImage from '../utils/generateImage'
 import getUserName from '../utils/getUserName.js'
 import getGoodFromStockx from '../utils/getGoodFromStockx'
 import convertURL from '../utils/convertURL'
+import sendGoodsForMailingUsers from '../utils/sendGoodsForMailingUsers'
 
 const sellScene = [
 	new StepScene('sell', [
@@ -394,13 +395,19 @@ const sellScene = [
                         }
 
 
-                        goods.forEach(async good => await(new Good(good)).save())
+                        goods.forEach(async good => {
+                            try {
+                                await(new Good(good)).save()
+                                await sendGoodsForMailingUsers(good)                                
+                            } catch (e) {
+                                console.log(e)
+                            }
+                        })
 
                         await BotConfig.updateOne({ $inc: { 'stats.countGoods': goods.length } })
 
                         if (config.has('messages.sell.after'))
                             ctx.send(config.get('messages.sell.after'))
-
 
                         const updateMessage = '\n\n❕ Если не обновлять товары, то спустя время они могут уйти в архив. Подпишись на напоминания в профиле чтобы такого не произошло'
 

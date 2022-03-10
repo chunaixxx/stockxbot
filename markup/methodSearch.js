@@ -29,3 +29,18 @@ export const methodSearchOnlyNameMarkup = [
         }),
     ],
 ]
+
+export const subscribeSearch = [
+    [
+        Keyboard.textButton({
+            label: 'Подписаться',
+            color: 'positive',
+        }),
+    ],
+    [
+        Keyboard.textButton({
+            label: 'Пропустить',
+            color: 'default',
+        }),
+    ]   
+]

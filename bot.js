@@ -1,10 +1,12 @@
 import config from 'config'
 console.log('CONFIG: ' + config.get('configName'))
 
+import vk from './commonVK'
+
 import './mongodb'
 import './cron'
+import './ws'
 
-import vk from './commonVK'
 
 import { SessionManager } from '@vk-io/session'
 import { SceneManager } from '@vk-io/scenes'

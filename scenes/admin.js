@@ -202,6 +202,11 @@ const adminScene = [
 						}
 					)
 
+                    await MailingUser.deleteMany({
+                        type: 'subscribeSearch',
+                        userId: selectedUser.userId
+                    })
+
 					await resetSearchInfo(selectedUser.userId)
 
 					ctx.send('❗ У пользователя снят расширенный доступ')
@@ -280,12 +285,12 @@ const adminScene = [
 			try {
 				const goodsActiveCount = (await Good.find()).length
 				const usersCount = (await User.find()).length
-				const mailingCount = (await MailingUser.find()).length
+				const mailingArchiveCount = (await MailingUser.find({ type: 'archive' })).length
+                const mailingSearchCount = (await MailingUser.find({ type: 'subscribeSearch' })).length
 
 				const { countSearch, countFoundSearch, countDelete, countGoods} = (await BotConfig.findOne()).stats
 
-				let sendString = `📊 Общая статистика\n\nПоиски: ${countSearch} (${countFoundSearch} из них найденых)\nУдаленные товары: ${countDelete}\nВсего товаров: ${countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}\n Подписаны на рассылку архивации: ${mailingCount}\n\n`
-
+				let sendString = `📊 Общая статистика\n\nПоиски: ${countSearch} (${countFoundSearch} из них найденых)\nУдаленные товары: ${countDelete}\nВсего товаров: ${countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}\n Подписаны на рассылку архивации: ${mailingArchiveCount}\nПодписок на поиск товара: ${ mailingSearchCount }\n\n`
 
                 let weekBuyers = await User.find({ 
                     'searchInfo.lastSearch': {
