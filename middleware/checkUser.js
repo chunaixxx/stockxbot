@@ -1,12 +1,24 @@
 import getUserName from '../utils/getUserName.js'
 import User from '../models/User.js'
+import BannedUser from '../models/BannedUser.js'
+
+import moment from 'moment'
 
 export default async (ctx, next) => {
 	try {
-		const foundUser = await User.findOne({ userId: ctx.senderId }).exec()
+        const bannedUser = await BannedUser.findOne({ userId: ctx.senderId }).exec()
 
-		if (foundUser) {
-			ctx.state.user = foundUser
+        if (bannedUser) {
+            moment.locale('ru');
+            const formattedExpiresIn = moment(bannedUser.expiresIn).format('MMMM DD YYYY')
+
+            return ctx.send(`🚫 Тебе закрыт доступ к нашей площадке. Все твои товары пропали из поиска.\n\nПричина: ${ bannedUser.reason }\nИстекает: никогда\n\nПо вопросам разблокировки писать @impossiblelevell`)
+        }
+
+		const user = await User.findOne({ userId: ctx.senderId }).exec()
+
+		if (user) {
+			ctx.state.user = user
 		} else {
 			const { firstname, lastname } = await getUserName(ctx.senderId)
 

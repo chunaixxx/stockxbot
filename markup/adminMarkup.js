@@ -7,32 +7,32 @@ export const adminMarkup = [
 	}),
 ]
 
-export const editUserMarkup = [
-	[
-		Keyboard.textButton({
-			label: 'Выдать расширенный доступ',
-			color: 'default',
-		}),
-	],
-	[
-		Keyboard.textButton({
-			label: 'Забрать расширенный доступ',
-			color: 'default',
-		}),
-	],
-	[
-		Keyboard.textButton({
-			label: 'Удалить объявления пользователя',
-			color: 'default',
-		}),
-	]
+export const addExtendedMarkup = [
+    Keyboard.textButton({
+        label: 'Выдать расширенный доступ',
+        color: 'positive',
+    }),
+]
+
+export const removeExtendedMarkup = [
+    Keyboard.textButton({
+        label: 'Забрать расширенный доступ',
+        color: 'negative',
+    })
+]
+
+export const removeAllAdsMarkup = [
+    Keyboard.textButton({
+        label: 'Удалить объявления пользователя',
+        color: 'default',
+    })
 ]
 
 export const statsMarkup = [
     Keyboard.textButton({
         label: 'Статистика',
         color: 'positive',
-    }),
+    })
 ]
 
 export const selectMyIDMarkup = [
@@ -54,6 +54,33 @@ export const unBanMarkup = [
         label: 'Разблокировать',
         color: 'positive',
     }),
+]
+
+export const banReasonMarkup = [
+	[
+		Keyboard.textButton({
+			label: 'Неактуальная цена товаров',
+			color: 'default',
+		}),
+	],
+	[
+		Keyboard.textButton({
+			label: 'Неактуальные товары ',
+			color: 'default',
+		}),
+	],
+    [
+		Keyboard.textButton({
+			label: 'Продажа подделок',
+			color: 'default',
+		}),
+	],
+    [
+		Keyboard.textButton({
+			label: 'Несоблюдение правил пользования ботом',
+			color: 'default',
+		}),
+	],
 ]
 
 
