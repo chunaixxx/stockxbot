@@ -1,26 +1,24 @@
+import { StepScene } from '@vk-io/scenes'
+
 import config from 'config'
 
 import Good from '../models/Good'
 import BotConfig from '../models/BotConfig'
 import MailingUser from '../models/MailingUser'
 
-import { StepScene } from '@vk-io/scenes'
-
 import baseSendMessage from '../baseSendMessage'
 
 import keyboard from '../markup/keyboard'
 
-import menuMarkup from '../markup/menuMarkup'
-import { methodSearchMarkup, methodSearchOnlyNameMarkup, subscribeSearch } from '../markup/methodSearch'
-import skipMarkup from '../markup/skipMarkup'
-import previousMarkup from '../markup/previousMarkup'
+import { methodSearchMarkup, methodSearchOnlyNameMarkup, subscribeSearch } from '../markup/searchMarkup'
+import { skipMarkup, previousMarkup, menuMarkup, nextPageMarkup, exitPageMarkup } from '../markup/generalMarkup'
 
 import getGoodFromStockx from '../utils/getGoodFromStockx'
 import convertURL from '../utils/convertURL'
 import searchGoods from '../utils/searchGoods'
-import { incrementSearch, resetSearchInfo } from '../utils/updateSearchInfo'
+import getCarousel from '../utils/getCarousel'
 import convertDate from '../utils/convertDate'
-import formatFoundGoodsToMessages from '../utils/formatMessages/search/foundGoods.js'
+import { incrementSearch, resetSearchInfo } from '../utils/updateSearchInfo'
 
 const searchScene = [
 	new StepScene('search', [
@@ -28,6 +26,7 @@ const searchScene = [
             ctx.scene.state.userQuery = { type: null, value: null}
 			ctx.scene.state.range = [0, Infinity]
 			ctx.scene.state.sizeRange = []
+            ctx.scene.state.activePage = 0
 
 			try {
 				const { extendedAccess } = ctx.state.user
@@ -255,54 +254,130 @@ const searchScene = [
 		},
 		// Вывод пользователю найденных товаров
 		async ctx => {
-            switch (ctx.text) {
-                case 'Назад':
-                    return ctx.scene.step.go(0)
-                case 'Меню':
-                    baseSendMessage(ctx)
-                    return ctx.scene.leave()
-            }
+            //const start = new Date().getTime();
 
             try {
-                // Запрос и фильтры пользователя
-                const { userQuery, sizeRange, range: priceRange } = ctx.scene.state
+                if (ctx.scene.step.firstTime || !ctx.text) {
+                    // Запрос и фильтры пользователя
+                    const { userQuery, sizeRange, range: priceRange } = ctx.scene.state
 
-                const searchedGoods = await searchGoods({ userQuery, sizeRange, priceRange, isHide: false })
+                    const searchedGoods = await searchGoods({ userQuery, sizeRange, priceRange, isHide: false })
 
-                if (searchedGoods.length) {
-                        ctx.send(`❗ По твоему запросу найдены такие объявления:`)
+                    if (searchedGoods.length) {
+                            // Разбиваем массив товаров на подмассивы состоящие из 5 товаров
+                            let searchedGoodInPages = []
+                            let size = 3
+                            for (let i = 0; i < Math.ceil(searchedGoods.length / size); i++){
+                                searchedGoodInPages[i] = searchedGoods.slice((i * size), (i * size) + size);
+                            }
+                            //
 
-                        // Получить и вывести постранично найденные товары
-                        let pages = formatFoundGoodsToMessages(searchedGoods)
-                        pages.forEach(async page => await ctx.send(page))
+                            ctx.scene.state.searchedGoodInPages = searchedGoodInPages
 
-                        // Для каждого товара увеличить счетчик просмотра
-                        searchedGoods.forEach(async ({ _id }) =>
-                            await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
-                        )
+                            const activePage = ctx.scene.state.activePage
 
-                        if (config.has('messages.search.after'))
-                            ctx.send(config.get('messages.search.after'))
+                            const carousel = await getCarousel(searchedGoodInPages[activePage])
 
-                        // Увеличить статистику пользователя по поискам
-                        await incrementSearch(ctx.senderId)
-                } else {
-                    if (config.has('messages.search.notFound'))
-                        ctx.send(config.get('messages.search.notFound'))
-                    else
-                        ctx.send(`❗ Мы ничего не нашли на нашей площадке. Попробуй воспользоваться другим методом поиска или поставь другие фильтры.`)
+
+                            if (config.has('messages.search.after'))
+                                ctx.send(config.get('messages.search.after'))
+
+                            ctx.send(`❗ По твоему запросу найдены такие объявления:`)
+
+                            // 1 страница
+                            ctx.send({
+                                message: `📄 Страница ${ activePage + 1}/${ searchedGoodInPages.length }`,
+                                ...carousel,
+                            })
+
+                            //const end = new Date().getTime();
+                            //console.log(`search: ${end - start}ms`);
+
+                            const menuPages = [exitPageMarkup]
+
+                            if (activePage + 1 < searchedGoodInPages.length)
+                                menuPages.unshift(nextPageMarkup)
+
+                            ctx.send({
+                                message: '📄 Меню управления страницами',
+                                keyboard: keyboard(menuPages)
+                            })
+                            //
+
+                            // Для каждого товара увеличить счетчик просмотра
+                            searchedGoodInPages[activePage].forEach(async ({ _id }) =>
+                                await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
+                            )
+
+                            // Увеличить статистику пользователя по поискам
+                            await incrementSearch(ctx.senderId)
+                    } else {
+                        if (config.has('messages.search.notFound'))
+                            ctx.send(config.get('messages.search.notFound'))
+                        else
+                            ctx.send(`❗ Мы ничего не нашли на нашей площадке. Попробуй воспользоваться другим методом поиска или поставь другие фильтры.`)
+
+                        return ctx.scene.step.go(0)
+                    }
+
+                    // Обновить общую статистику бота
+                    await BotConfig.updateOne({ $inc: { 'stats.countSearch': 1 } })
+
+                    return
                 }
 
-                // Обновить общую статистику бота
-                await BotConfig.updateOne({ $inc: { 'stats.countSearch': 1 } })
 
-                return ctx.scene.step.next()
+                if (ctx.text == 'Следующая страница') {
+                    const searchedGoodInPages = ctx.scene.state.searchedGoodInPages
+
+                    ctx.scene.state.activePage += 1
+                    const activePage = ctx.scene.state.activePage
+
+                    if (activePage + 1 > searchedGoodInPages.length) {
+                        return ctx.send({
+                            message: '❗ Товаров больше нет',
+                            keyboard: keyboard([exitPageMarkup])
+                        })                     
+                    }
+
+                    const carousel = await getCarousel(searchedGoodInPages[activePage])
+
+                    ctx.send({
+                        message: `📄 Страница ${ activePage + 1 }/${ searchedGoodInPages.length }`,
+                        ...carousel,
+                    })
+
+                    const menuPages = [exitPageMarkup]
+
+                    if (activePage + 1 < searchedGoodInPages.length)
+                        menuPages.unshift(nextPageMarkup)
+
+                    ctx.send({
+                        message: '📄 Меню управления страницами',
+                        keyboard: keyboard(menuPages)
+                    })
+
+                    // Для каждого товара увеличить счетчик просмотра
+                    searchedGoodInPages[activePage].forEach(async ({ _id }) =>
+                        await Good.findOneAndUpdate({ _id }, { $inc: { 'views': 1 } })
+                    )
+
+                    return
+                }
+                
+                if (ctx.text == 'Закончить просмотр') {
+                    ctx.send('❗ Перенаправляю тебя в меню поиска')
+                    return ctx.scene.step.next()
+                }   
+
+                
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
                 return ctx.scene.leave()
             }
 		},
+        // Подписка на поиск
         async ctx => {
             if (ctx.state.user.extendedAccess == false)
                 return ctx.scene.step.go(0)

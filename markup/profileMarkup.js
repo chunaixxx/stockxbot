@@ -1,30 +1,6 @@
 import { Keyboard } from 'vk-io'
 
-export const myAdsMarkupNotSize = [
-	[
-		Keyboard.textButton({
-			label: 'Цена',
-			color: 'positive',
-		}),
-        Keyboard.textButton({
-			label: 'Доставка',
-			color: 'positive',
-		}),
-	],
-	[
-        Keyboard.textButton({
-			label: 'Удалить',
-			color: 'negative',
-		}),
-		Keyboard.textButton({
-			label: 'Назад',
-			color: 'default',
-		}),
-	],
-]
-
-
-export const myAdsMarkup = [
+export const editGoodMarkup = [
 	[
 		Keyboard.textButton({
 			label: 'Цена',
@@ -57,7 +33,30 @@ export const myAdsMarkup = [
 	],
 ]
 
-export const mainMenuProfile = [
+export const editGoodNotSizeMarkup = [
+	[
+		Keyboard.textButton({
+			label: 'Цена',
+			color: 'positive',
+		}),
+        Keyboard.textButton({
+			label: 'Доставка',
+			color: 'positive',
+		}),
+	],
+	[
+        Keyboard.textButton({
+			label: 'Удалить',
+			color: 'negative',
+		}),
+		Keyboard.textButton({
+			label: 'Назад',
+			color: 'default',
+		}),
+	],
+]
+
+export const mainProfileMarkup = [
 	[
 		Keyboard.textButton({
 			label: 'Все объявления',
@@ -73,7 +72,7 @@ export const mainMenuProfile = [
 	],
 ]
 
-export const subsribeMailing = [
+export const subArchiveMarkup = [
 	[
 		Keyboard.textButton({
 			label: 'Напоминать об актуальности',
@@ -82,7 +81,7 @@ export const subsribeMailing = [
 	],    
 ]
 
-export const unsubsribeMailing = [
+export const unSubArchiveMarkup = [
 	[
 		Keyboard.textButton({
 			label: 'Не напоминать об актуальности',
@@ -92,7 +91,7 @@ export const unsubsribeMailing = [
 ]
 
 
-export const subscribeSearchGood = [
+export const subSearchGoodMarkup = [
 	[
 		Keyboard.textButton({
 			label: 'Подписка на поиск',
@@ -101,17 +100,7 @@ export const subscribeSearchGood = [
 	],        
 ]
 
-export const profileNext = [
-	[
-		Keyboard.textButton({
-			label: 'Продолжить',
-			color: 'default',
-		}),
-	],
-]
-
-
-export const allAdsSettings = [
+export const editAllGoodsMarkup = [
     [
         Keyboard.textButton({
 			label: 'Доставка',

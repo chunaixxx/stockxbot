@@ -3,6 +3,8 @@ import keyboardBuilder from './markup/keyboard.js'
 import { baseMarkup } from './markup/baseMarkup.js'
 import { adminMarkup, settingsMarkup } from './markup/adminMarkup.js'
 
+import vk from './commonVK'
+
 export default async ctx => {
     // Проверка на наличие админ. прав
 	const settingsAccess = ctx.state?.user?.settingsAccess

@@ -1,13 +1,12 @@
+import { StepScene } from '@vk-io/scenes'
+
 import BotConfig from '../models/BotConfig'
 
-import { StepScene } from '@vk-io/scenes'
+import baseSendMessage from '../baseSendMessage'
 
 import keyboard from '../markup/keyboard'
 import { settingsMenuMarkup } from '../markup/adminMarkup'
-import menuMarkup from '../markup/menuMarkup'
-
-import baseSendMessage from '../baseSendMessage'
-import previousMarkup from '../markup/previousMarkup'
+import { menuMarkup, previousMarkup } from '../markup/generalMarkup'
 
 import convertDate from '../utils/convertDate'
 import { resetSearchInfo } from '../utils/updateSearchInfo'

@@ -28,18 +28,19 @@ export const removeAllAdsMarkup = [
     })
 ]
 
-export const statsMarkup = [
-    Keyboard.textButton({
-        label: 'Статистика',
-        color: 'positive',
-    })
-]
-
-export const selectMyIDMarkup = [
-    Keyboard.textButton({
-        label: 'Выбрать меня',
-        color: 'positive',
-    }),
+export const mainAdminMarkup = [
+    [
+        Keyboard.textButton({
+            label: 'Статистика',
+            color: 'positive',
+        }),
+    ],
+    [
+        Keyboard.textButton({
+            label: 'Выбрать меня',
+            color: 'positive',
+        }),
+    ]
 ]
 
 export const banMarkup = [
@@ -60,25 +61,25 @@ export const banReasonMarkup = [
 	[
 		Keyboard.textButton({
 			label: 'Неактуальная цена товаров',
-			color: 'default',
+			color: 'negative',
 		}),
 	],
 	[
 		Keyboard.textButton({
 			label: 'Неактуальные товары ',
-			color: 'default',
+			color: 'negative',
 		}),
 	],
     [
 		Keyboard.textButton({
 			label: 'Продажа подделок',
-			color: 'default',
+			color: 'negative',
 		}),
 	],
     [
 		Keyboard.textButton({
 			label: 'Несоблюдение правил пользования ботом',
-			color: 'default',
+			color: 'negative',
 		}),
 	],
 ]
@@ -91,14 +92,14 @@ export const settingsMarkup = [
 	}),
 ]
 
-export const addAdmin = [
+export const addAdminMarkup = [
     Keyboard.textButton({
         label: 'Назначить администратора',
         color: 'positive',
     }),
 ]
 
-export const deleteAdmin = [
+export const deleteAdminMarkup = [
     Keyboard.textButton({
         label: 'Снять администратора',
         color: 'negative',

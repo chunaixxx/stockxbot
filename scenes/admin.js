@@ -5,9 +5,8 @@ import moment from 'moment'
 import baseSendMessage from '../baseSendMessage'
 
 import keyboard from '../markup/keyboard'
-import { statsMarkup, selectMyIDMarkup, addExtendedMarkup, removeExtendedMarkup, removeAllAdsMarkup, addAdmin, deleteAdmin, banMarkup, unBanMarkup, banReasonMarkup } from '../markup/adminMarkup'
-import previousMarkup from '../markup/previousMarkup'
-import menuMarkup from '../markup/menuMarkup'
+import { mainAdminMarkup, removeAllAdsMarkup, banReasonMarkup } from '../markup/adminMarkup'
+import { menuMarkup, previousMarkup } from '../markup/generalMarkup'
 
 import { resetSearchInfo } from '../utils/updateSearchInfo'
 
@@ -17,9 +16,11 @@ import Good from '../models/Good'
 import MailingUser from '../models/MailingUser'
 import BotConfig from '../models/BotConfig'
 
+import getUserDossierMessage from '../utils/adminScene/getUserDossierMessage'
+import getManageUserMarkup from '../utils/adminScene/getManageUserMarkup'
+import getUserGoodsInPages from '../utils/adminScene/getUserGoodsInPages'
+
 import logAdminActions from '../utils/logAdminActions'
-import convertDate from '../utils/convertDate'
-import formatFoundGoodsToMessages from '../utils/formatMessages/search/foundGoods.js'
 
 const adminScene = [
 	new StepScene('admin', [
@@ -30,7 +31,7 @@ const adminScene = [
 			if (ctx.scene.step.firstTime)
 				return ctx.send({
 					message: `${admin.username}, ты авторизован как администратор.\n\n❗ Чтобы отредактировать или посмотреть статистику пользователя отправь ID или перешли его сообщение`,
-					keyboard: keyboard([...statsMarkup, ...selectMyIDMarkup, ...menuMarkup]),
+					keyboard: keyboard([...mainAdminMarkup, ...menuMarkup]),
 				})
 
             switch (ctx.text) {
@@ -44,7 +45,6 @@ const adminScene = [
                     return ctx.scene.step.next()
             }
 
-            // Ручной ввод ID
             try {
                 let queryId = ctx.hasForwards ? ctx.forwards[0].senderId : ctx.text
 
@@ -56,7 +56,7 @@ const adminScene = [
 				} else {
 					return ctx.send({
 						message: '❗ Данный пользователь не найден в базе данных',
-						keyboard: keyboard([...statsMarkup, ...selectMyIDMarkup, ...menuMarkup]),
+						keyboard: keyboard([...mainAdminMarkup, ...menuMarkup]),
 					})
 				}
 			} catch (e) {
@@ -71,8 +71,10 @@ const adminScene = [
             const admin = ctx.state.user
 
             const selectedUserId = ctx.scene.state.selectedUserId
+
             const selectedUser = await User.findOne({ userId: selectedUserId })
             const bannedUser = await BannedUser.findOne({ userId: selectedUserId })
+            const countGoods = await Good.countDocuments({ sellerId: selectedUserId })
 
             ctx.scene.state.selectedUser = selectedUser
             ctx.scene.state.bannedUser = bannedUser
@@ -81,59 +83,46 @@ const adminScene = [
 
             if (ctx.scene.step.firstTime || !ctx.text) {
                 try {
-                    const countGoods = await Good.countDocuments({ sellerId: userId })
-                    const lastSearch = searchInfo.lastSearch ? convertDate(searchInfo.lastSearch) : 'отсутствует'
-    
-                    let title = `❗ @id${userId} (${ username })\n`
-    
-                    if (extendedAccess) title += 'Полный доступ'
-                    else title += 'Без доступа'
-    
-                    if (settingsAccess) title += ', владелец'
-                    else if (adminAccess) title += ', администратор'
+                    const userDossierMessage = getUserDossierMessage({
+                        username, 
+                        userId, 
+                        searchInfo,
+                        extendedAccess, 
+                        adminAccess, 
+                        settingsAccess,
+                        countGoods,
+                        bannedUser
+                    })
 
-                    let banTitle = ''
-                    if (bannedUser)
-                        banTitle = `🚫 Заблокирован.\nПричина: ${ bannedUser.reason }\nИстекает: никогда\n\n`
-
-                    ctx.send(`${ title }\n\n${ banTitle }Поисков: ${ searchInfo.count } (Последний поиск: ${ lastSearch })\nТоваров: ${ countGoods }`)  
+                    ctx.send(userDossierMessage)  
 
                     // Вывод товаров
                     const searchedGoods = await Good.find({ sellerId: userId })
                     if (searchedGoods.length) {
                         ctx.send(`❗ Активные товары пользователя:`)
 
-                        let pages = formatFoundGoodsToMessages(searchedGoods)
+                        let pages = getUserGoodsInPages(searchedGoods)
                         pages.forEach(async page => await ctx.send(page))    
                     }
 
-                    const markup = []
+                    // Собрать клавиаутуру для управления пользователем
+                    const manageUserMarkup = getManageUserMarkup({
+                        user: {
+                            userId,
+                            settingsAccess,
+                            extendedAccess,
+                            adminAccess,
+                            bannedUser,
+                        },
 
-                    if (settingsAccess == false || selectedUserId == admin.userId) {
-                        // Отображение кнопки "выдать расширенный доступ" или забрать
-                        if (extendedAccess)
-                            markup.push(removeExtendedMarkup)
-                        else
-                            markup.push(addExtendedMarkup)
+                        admin: { userId: admin.userId, settingsAccess: admin.settingsAccess }
+                    })
+                    //
 
-                        // Отображение кнопки "снять админа" или "добавить админа"
-                        if (admin.settingsAccess && admin.userId != userId && settingsAccess == false)
-                            if (adminAccess)
-                                markup.push(deleteAdmin)
-                            else
-                                markup.push(addAdmin)
-
-                        // Отображение кнопки заблокировать или разблокировать
-                        if (adminAccess == false && selectedUserId !== admin.userId) {
-                            if (bannedUser)
-                                markup.push(unBanMarkup)
-                            else
-                                markup.push(banMarkup)
-                        }
-
+                    if (manageUserMarkup.length) {
                         return ctx.send({
                             message: '❗ Действие над пользователем',
-                            keyboard: keyboard([...markup, removeAllAdsMarkup, previousMarkup])
+                            keyboard: keyboard([...manageUserMarkup, removeAllAdsMarkup, previousMarkup])
                         })
                     } else {
                         return ctx.send({
@@ -141,6 +130,7 @@ const adminScene = [
                             keyboard: keyboard(previousMarkup)
                         })
                     }
+
                 } catch (e) {
                     console.log(e)
                     ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
@@ -148,6 +138,7 @@ const adminScene = [
                 }
             }
 
+            // Проверка доступа
             if (ctx.text == 'Назад') 
                 return ctx.scene.step.go(0)
 
@@ -176,6 +167,7 @@ const adminScene = [
                 else if (adminAccess && ctx.text == 'Снять администратора')
                     return ctx.scene.step.go(6)
             }
+            //
 		},
 
 		// Выдать расширенный доступ
@@ -306,7 +298,7 @@ const adminScene = [
 
 				const { countSearch, countFoundSearch, countDelete, countGoods} = (await BotConfig.findOne()).stats
 
-				let sendString = `📊 Общая статистика\n\nПоиски: ${countSearch} (${countFoundSearch} из них найденых)\nУдаленные товары: ${countDelete}\nВсего товаров: ${countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}\n Подписаны на рассылку архивации: ${mailingArchiveCount}\nПодписок на поиск товара: ${ mailingSearchCount }\n\n`
+				let sendString = `📊 Общая статистика\n\nПоиски: ${countSearch} (${countFoundSearch} из них найденых)\nУдаленные товары: ${countDelete}\nВсего товаров: ${countGoods} (${goodsActiveCount} из них активные)\nПользователей: ${usersCount}\nПодписаны на рассылку архивации: ${mailingArchiveCount}\nПодписок на поиск товара: ${ mailingSearchCount }\n\n`
 
                 let weekBuyers = await User.find({ 
                     'searchInfo.lastSearch': {
@@ -347,10 +339,12 @@ const adminScene = [
         async ctx => {
             if (ctx.scene.step.firstTime)
                 return ctx.send({
-                    message: `Укажи причину бана из списка кнопок. Если причиная особенная, то напиши ее вручную`,
-                    keyboard: keyboard(banReasonMarkup),
+                    message: `Укажи причину бана из списка кнопок. Если причина особенная, то напиши ее вручную. Все товары пользователя при этом пропадут из поиска и попадут в архив`,
+                    keyboard: keyboard([...banReasonMarkup, ...previousMarkup]),
                 })
 
+            if (ctx.text == 'Назад')
+                return ctx.scene.step.go(1)
 
             const selectedUser = ctx.scene.state.selectedUser
 

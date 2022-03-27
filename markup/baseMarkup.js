@@ -5,25 +5,16 @@ export const baseMarkupNotFaq = [
 		Keyboard.textButton({
 			label: 'Купить',
 			color: 'positive',
-			payload: {
-				choice: 'buy',
-			},
 		}),
 		Keyboard.textButton({
 			label: 'Продать',
 			color: 'negative',
-			payload: {
-				choice: 'sell',
-			},
 		}),
 	],
 	[
 		Keyboard.textButton({
 			label: 'Профиль',
 			color: 'default',
-			payload: {
-				choice: 'myads',
-			},
 		}),
 	],
 ]
@@ -34,9 +25,6 @@ export const baseMarkup = [
 		Keyboard.textButton({
 			label: 'FAQ',
 			color: 'default',
-			payload: {
-				choice: 'faq',
-			},
 		}),
 	]
 ]

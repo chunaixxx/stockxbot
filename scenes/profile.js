@@ -12,10 +12,8 @@ import baseSendMessage from '../baseSendMessage'
 import keyboard from '../markup/keyboard'
 
 import { baseMarkup } from '../markup/baseMarkup'
-import { myAdsMarkup, myAdsMarkupNotSize, mainMenuProfile, allAdsSettings, profileNext, subsribeMailing, unsubsribeMailing, subscribeSearchGood } from '../markup/myAdsMarkup'
-import menuMarkup from '../markup/menuMarkup'
-import previousMarkup from '../markup/previousMarkup'
-import answerMarkup from '../markup/answerMarkup'
+import { editGoodMarkup, editGoodNotSizeMarkup, mainProfileMarkup, editAllGoodsMarkup, subArchiveMarkup, unSubArchiveMarkup, subSearchGoodMarkup } from '../markup/profileMarkup'
+import { menuMarkup, previousMarkup, answerMarkup, nextMarkup } from '../markup/generalMarkup'
 
 import getGoodFromStockx from '../utils/getGoodFromStockx'
 import generateImage from '../utils/generateImage'
@@ -34,7 +32,7 @@ const profileScene = [
                     if (someGoodIsHide) {
                         return ctx.send({
                             message: '🔒 Твои товары пропали из поиска, потому что ты не обновлял их актуальность',
-                            keyboard: keyboard(...profileNext) 
+                            keyboard: keyboard(...nextMarkup) 
                         })
                     } else {
                         ctx.scene.step.next()
@@ -87,7 +85,7 @@ const profileScene = [
 					if (goods.length === 0) {
 						return ctx.send({
 							message: sendString + '❗ У тебя отсутствуют объявления. Попробуй создать их с помощью кнопки — Продать',
-							keyboard: user.extendedAccess ? keyboard([...subscribeSearchGood, ...menuMarkup]) : keyboard(menuMarkup),
+							keyboard: user.extendedAccess ? keyboard([...subSearchGoodMarkup, ...menuMarkup]) : keyboard(menuMarkup),
 						})
 					} else {
                         ctx.send(sendString)
@@ -129,14 +127,14 @@ const profileScene = [
                         const mailingArchiveUser = await MailingUser.findOne({ userId: ctx.senderId, type: 'archive' })
                         ctx.scene.state.mailingArchiveUser = mailingArchiveUser
     
-                        const subscribeMarkup = mailingArchiveUser ? unsubsribeMailing : subsribeMailing
+                        const subscribeMarkup = mailingArchiveUser ? unSubArchiveMarkup : subArchiveMarkup
     
                         return ctx.send({
                             message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
                             keyboard: user.extendedAccess ? 
-                                    keyboard([...mainMenuProfile, ...subscribeMarkup, ...subscribeSearchGood, ...menuMarkup]) 
+                                    keyboard([...mainProfileMarkup, ...subscribeMarkup, ...subSearchGoodMarkup, ...menuMarkup]) 
                                 : 
-                                    keyboard([...mainMenuProfile, ...subscribeMarkup, ...menuMarkup]),
+                                    keyboard([...mainProfileMarkup, ...subscribeMarkup, ...menuMarkup]),
                         }) 
                     }
 				} catch (e) {
@@ -221,7 +219,7 @@ const profileScene = [
 				else 
                     sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery}\n\n`
 
-				const markup = ctx.scene.state.selectedGood.size ? myAdsMarkup : myAdsMarkupNotSize
+				const markup = ctx.scene.state.selectedGood.size ? editGoodMarkup : editGoodNotSizeMarkup
 
 				return ctx.send({
 					message: sendString,
@@ -473,7 +471,7 @@ const profileScene = [
             if (ctx.scene.step.firstTime || !ctx.text)
                 return ctx.send({ 
                     message: '❗ Ты попал в меню настроек всех объявлений. Выбери параметр который хочешь изменить для ВСЕХ объявлений.',
-                    keyboard: keyboard([...allAdsSettings, ...previousMarkup])
+                    keyboard: keyboard([...editAllGoodsMarkup, ...previousMarkup])
                 })
 
             switch (ctx.text) {

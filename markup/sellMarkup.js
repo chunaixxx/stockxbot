@@ -1,6 +1,6 @@
 import { Keyboard } from 'vk-io'
 
-const cityMarkup = [
+export const cityMarkup = [
         Keyboard.textButton({
             label: 'Москва',
             color: 'default',
@@ -11,5 +11,3 @@ const cityMarkup = [
 
         })
 ]
-
-export default cityMarkup

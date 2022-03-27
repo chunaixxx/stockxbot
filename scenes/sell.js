@@ -12,11 +12,9 @@ import baseSendMessage from '../baseSendMessage'
 
 import keyboard from '../markup/keyboard'
 
-import answerMarkup from '../markup/answerMarkup'
 import { baseMarkup } from '../markup/baseMarkup'
-import menuMarkup from '../markup/menuMarkup'
-import cityMarkup from '../markup/cityMarkup'
-import previousMarkup from '../markup/previousMarkup'
+import { menuMarkup, previousMarkup, answerMarkup } from '../markup/generalMarkup'
+import { cityMarkup } from '../markup/sellMarkup'
 
 import generateImage from '../utils/generateImage'
 import getUserName from '../utils/getUserName.js'
@@ -37,7 +35,7 @@ const sellScene = [
             // Приветственное сообщение
             if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
                 return ctx.send({
-                    message: '❗ Для того чтобы выставить предмет на продажу — укажите ссылку на товар с сайта stockx.com\n\nПример: stockx.com/air-jordan-1-retro-high-og-patent-bred',
+                    message: config.get('messages.sell.before'),
                     keyboard: keyboard(menuMarkup),
                 })
 
