@@ -32,6 +32,18 @@ const sellScene = [
             ctx.scene.state.hasDelivery = null
             ctx.scene.state.hasFitting = null
 
+			if (ctx.text == 'Меню') {
+				baseSendMessage(ctx)
+				return ctx.scene.leave()
+			}
+
+            const user = ctx.state.user
+            if (user.extendedAccess == null && user.freeSell <= 0)
+                return ctx.send({
+                    message: `❗ У тебя закончились бесплатные выставления товаров на продажу.\n\n🚀 Но ты всегда можешь приобрести PRO-версию и использовать бесконечное количество поисков и продаж. Обращаться к @impossiblelevell (главному администратору)`,
+                    keyboard: keyboard(menuMarkup)
+                })
+
             // Приветственное сообщение
             if (ctx.scene.step.firstTime || (!ctx.text && !ctx?.attachments[0]?.url))
                 return ctx.send({
@@ -39,35 +51,10 @@ const sellScene = [
                     keyboard: keyboard(menuMarkup),
                 })
 
-			if (ctx.text == 'Меню') {
-				baseSendMessage(ctx)
-				return ctx.scene.leave()
-			}
-
-            // Мы нашли ваш товар?
-            if (ctx.text == 'Нет')
-                return ctx.send({
-                    message: '❗ Хорошо, можете попробовать еще раз указать ссылку на товар. В случае проблем обращайтесь к главному администратору',
-                    keyboard: keyboard(menuMarkup),
-                })
-
 			try {
-				const goodsOfUser = await Good.find({ sellerId: ctx.senderId })
-				const user = await User.findOne({ userId: ctx.senderId })
-
-				const countGoods = goodsOfUser.length
-				const maxGoods = (await BotConfig.findOne()).maxGoods
-				const extendedAccess = user.extendedAccess
+				const extendedAccess = ctx.state.user.extendedAccess
                 
-                ctx.scene.state.countGoods = countGoods
-                ctx.scene.state.maxGoods = maxGoods
                 ctx.scene.state.extendedAccess = extendedAccess
-
-				if (countGoods >= maxGoods && extendedAccess == false)
-					return ctx.send({
-						message: `❗ Ты превысил лимит выставления объявлений (${ countGoods }/${ maxGoods }). Удали объявление, либо приобрети расширенный доступ, чтобы выставлять на продажу неограниченное количество товаров`,
-						keyboard: keyboard(menuMarkup)	
-					})
 
                 // Заменить эмодзи на emoji текст
                 const regexEmoji = /(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\udde6-\uddff]|\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|\ud83c[\ude32-\ude3a]|\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26FF]|\u2b05|\u2b06|\u2b07|\u2b1b|\u2b1c|\u2b50|\u2b55|\u231a|\u231b|\u2328|\u23cf|[\u23e9-\u23f3]|[\u23f8-\u23fa]|\ud83c\udccf|\u2934|\u2935|[\u2190-\u21ff])/g;
@@ -124,6 +111,7 @@ const sellScene = [
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				try {
 					const { imgUrl, filename } = ctx.scene.state.good
+
 					const goodName = ctx.scene.state.good.name
 					const imgPath = `./images/${filename}.jpg`
 
@@ -178,12 +166,12 @@ const sellScene = [
             const mappedSizes = sizes.map(size => size.toUpperCase())
             const selectedSizes = ctx.text.split(' ').map(size => size.toUpperCase())
 
-            const { countGoods, maxGoods, extendedAccess } = ctx.scene.state
+            const user = ctx.state.user
             const countSelectedGoods = selectedSizes?.length
 
-            if (countGoods + countSelectedGoods > maxGoods && extendedAccess == false)
+            if (user.freeSell < countSelectedGoods && user.extendedAccess == null)
                 return ctx.send({
-                    message: `❗ Ты не можешь выставить столько объявлений, тогда у тебя будет превышен лимит товаров (${ countGoods +  countSelectedGoods}/${ maxGoods }). Доступно для продажи: ${maxGoods - countGoods}. Удали ненужные/проданные объявления, либо приобрети расширенный доступ, чтобы выставлять на продажу неограниченное количество товаров.\n\nДоступные размеры:\n${ sizes.join(' ') }`,
+                    message: `❗ Ты не можешь выставить столько объявлений.\n\nУказано размеров: ${ countSelectedGoods }\nДоступно объявлений: ${ user.freeSell }\n\nДоступные размеры:\n${ sizes.join(' ') }`,
                     keyboard: keyboard(previousMarkup)	
                 })
 
@@ -235,19 +223,19 @@ const sellScene = [
                 const patternNumber = /^\d+$/
                 if (patternNumber.test(selectedPrice) == false)
                     return ctx.send({
-                        message: '❗ Укажите стоимость в правильном формате:\n\n❌ 10.000руб.\n✅ 10000\n❌ 10.000руб. 12.000руб.\n✅ 10000 12000',
+                        message: '❗ Укажите стоимость в правильном формате:\n\n❌ 10.000₽\n✅ 10000\n❌ 10.000₽ 12.000₽\n✅ 10000 12000',
                         keyboard: keyboard(previousMarkup)
                 })
 
                 if (+selectedPrice > 10000000)
                     return ctx.send({
-                        message: '❗ Максимальная стоимость товара 10000000руб. Попробуй еще раз',
+                        message: '❗ Максимальная стоимость товара 10000000₽ Попробуй еще раз',
                         keyboard: keyboard(previousMarkup)
                     })
 
                 if (+selectedPrice < 1)
                     return ctx.send({
-                        message: '❗ Минимальная стоимость товара 1руб. Попробуй еще раз',
+                        message: '❗ Минимальная стоимость товара 1₽ Попробуй еще раз',
                         keyboard: keyboard(previousMarkup)
                     })
             }
@@ -345,7 +333,7 @@ const sellScene = [
             const { name: goodName, allSizes, imgUrl, filename } = ctx.scene.state.good
 
             const formattedSelectedSizes = selectedSizes ? selectedSizes.join(', ') : null
-            const formattedSelectedPrices = selectedPrices.join('руб., ')
+            const formattedSelectedPrices = selectedPrices.join('₽, ')
 
 			if (ctx.scene.step.firstTime || !ctx.text) {
 				let message = ``
@@ -355,9 +343,9 @@ const sellScene = [
                 const wordSize = selectedSizes?.length > 1 ? 'Размеры' : 'Размер'
 
 				if (allSizes) 
-					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}руб.\n${wordSize}: ${formattedSelectedSizes}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}`
+					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}₽\n${wordSize}: ${formattedSelectedSizes}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}`
 				else
-					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}руб.\nГород: ${city}\nДоставка: ${hasDelivery}`
+					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}₽\nГород: ${city}\nДоставка: ${hasDelivery}`
 
 				ctx.send({
 					message,
@@ -392,7 +380,6 @@ const sellScene = [
                             goods.push(goodParams)
                         }
 
-
                         goods.forEach(async good => {
                             try {
                                 await(new Good(good)).save()
@@ -403,6 +390,10 @@ const sellScene = [
                         })
 
                         await BotConfig.updateOne({ $inc: { 'stats.countGoods': goods.length } })
+
+                        const extendedAccess = ctx.state.user.extendedAccess
+                        if (extendedAccess == null)
+                            await User.updateOne({ userId: ctx.state.user.userId }, { $inc: { freeSell: -goods.length } })
 
                         if (config.has('messages.sell.after'))
                             ctx.send(config.get('messages.sell.after'))

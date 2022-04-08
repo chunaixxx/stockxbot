@@ -3,6 +3,7 @@ import { StepScene } from '@vk-io/scenes'
 import config from 'config'
 
 import Good from '../models/Good'
+import User from '../models/User'
 import BotConfig from '../models/BotConfig'
 import MailingUser from '../models/MailingUser'
 
@@ -17,8 +18,7 @@ import getGoodFromStockx from '../utils/getGoodFromStockx'
 import convertURL from '../utils/convertURL'
 import searchGoods from '../utils/searchGoods'
 import getCarousel from '../utils/getCarousel'
-import convertDate from '../utils/convertDate'
-import { incrementSearch, resetSearchInfo } from '../utils/updateSearchInfo'
+import { incrementSearch } from '../utils/updateSearchInfo'
 
 const searchScene = [
 	new StepScene('search', [
@@ -28,31 +28,17 @@ const searchScene = [
 			ctx.scene.state.sizeRange = []
             ctx.scene.state.activePage = 0
 
-			try {
-				const { extendedAccess } = ctx.state.user
-                const { count: countSearch, lastSearch } = ctx.state.user.searchInfo
-				const { maxSearch, cooldownSearch } = await BotConfig.findOne()
+            if (ctx.text == 'Меню') {
+                baseSendMessage(ctx)
+                return ctx.scene.leave()
+            }
 
-				if (countSearch >= maxSearch && extendedAccess == false ) {
-                    // Если пришло время выдать бесплатные поиски
-					if (Date.now() - lastSearch.getTime() >= cooldownSearch) {
-						await resetSearchInfo(ctx.senderId)
-					} else {
-						const leftTime = convertDate(+cooldownSearch + +lastSearch.getTime())
-
-						ctx.send({
-							message: `❗ Вы превысили лимит поисков (${ countSearch }/${ maxSearch }). Следующие ${ maxSearch } поиска будут доступны ${ leftTime }. Оформите расширенный доступ для неограниченного количества поисков`,
-							keyboard: keyboard(menuMarkup)	
-						})
-
-						return ctx.scene.leave()
-					}
-				}
-			} catch (e) {
-				console.log(e)
-				ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-				return ctx.scene.leave()
-			}
+            const user = ctx.state.user
+            if (user.freeSearch <= 0 && user.extendedAccess == null)
+                return ctx.send({
+                    message: `❗ У тебя закончились бесплатные поиски.\n\n🚀 Но ты всегда можешь приобрести PRO-версию и использовать бесконечное количество поисков и продаж. Обращаться к @impossiblelevell (главному администратору)`,
+                    keyboard: keyboard(menuMarkup)
+                })
 
             const onlyNameSearch = config.get('onlyNameSearch')
 
@@ -65,9 +51,6 @@ const searchScene = [
 				})
 
             switch (ctx.text) {
-                case 'Меню':
-                    baseSendMessage(ctx)
-                    return ctx.scene.leave()
                 case 'Поиск скидки':
                     return ctx.send({
                         message: `Очень рады что тебя заинтересовали наши скидки! Мы делаем скидку в таких магазинах как:\n\nLamoda -25%\nLeform 35-40%\nAsos до 40%\nFarfetch до 20%\nStreet Beat до 40%\nBrandshop 15%\n\nЧтобы узнать подробности и заказать пиши https://vk.com/eileonov`,
@@ -254,19 +237,28 @@ const searchScene = [
 		},
 		// Вывод пользователю найденных товаров
 		async ctx => {
-            //const start = new Date().getTime();
-
             try {
                 if (ctx.scene.step.firstTime || !ctx.text) {
                     // Запрос и фильтры пользователя
                     const { userQuery, sizeRange, range: priceRange } = ctx.scene.state
 
                     const searchedGoods = await searchGoods({ userQuery, sizeRange, priceRange, isHide: false })
+                    const user = ctx.state.user
 
                     if (searchedGoods.length) {
+                            if (user.extendedAccess == null)
+                                await User.updateOne(
+                                    { userId: ctx.senderId },
+                                    { $inc: { freeSearch: -1 } }
+                                )
+
                             // Разбиваем массив товаров на подмассивы состоящие из 5 товаров
                             let searchedGoodInPages = []
                             let size = 3
+
+                            if (user.extendedAccess)
+                                size = 5
+
                             for (let i = 0; i < Math.ceil(searchedGoods.length / size); i++){
                                 searchedGoodInPages[i] = searchedGoods.slice((i * size), (i * size) + size);
                             }
@@ -285,13 +277,10 @@ const searchScene = [
                             ctx.send(`❗ По твоему запросу найдены такие объявления:`)
 
                             // 1 страница
-                            ctx.send({
+                            await ctx.send({
                                 message: `📄 Страница ${ activePage + 1}/${ searchedGoodInPages.length }`,
                                 ...carousel,
                             })
-
-                            //const end = new Date().getTime();
-                            //console.log(`search: ${end - start}ms`);
 
                             const menuPages = [exitPageMarkup]
 
@@ -326,7 +315,6 @@ const searchScene = [
                     return
                 }
 
-
                 if (ctx.text == 'Следующая страница') {
                     const searchedGoodInPages = ctx.scene.state.searchedGoodInPages
 
@@ -342,7 +330,7 @@ const searchScene = [
 
                     const carousel = await getCarousel(searchedGoodInPages[activePage])
 
-                    ctx.send({
+                    await ctx.send({
                         message: `📄 Страница ${ activePage + 1 }/${ searchedGoodInPages.length }`,
                         ...carousel,
                     })

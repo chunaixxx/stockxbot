@@ -68,6 +68,11 @@ const goodSchema = new Schema({
         default: false
     },
 
+    desc: {
+        type: String,
+        default: null
+    },
+
 	createdAt: { 
         type: Date, 
         default: Date.now 

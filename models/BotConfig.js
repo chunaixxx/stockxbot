@@ -63,7 +63,7 @@ const botConfigSchema = new Schema({
 				default: null
 			},
 
-			adminID: {
+			adminId: {
 				type: Number, 
 				default: null
 			},
@@ -73,19 +73,19 @@ const botConfigSchema = new Schema({
 				default: null
 			},
 
-			userID: {
+			userId: {
 				type: String,
 				default: null
 			}
 		},
 
-		giveExtendedAccess: {
+		extendExtendedAccess: {
 			adminName: {
 				type: String, 
 				default: null
 			},
 
-			adminID: {
+			adminId: {
 				type: Number, 
 				default: null
 			},
@@ -95,7 +95,29 @@ const botConfigSchema = new Schema({
 				default: null
 			},
 
-			userID: {
+			userId: {
+				type: String,
+				default: null
+			}
+		},
+
+        giveExtendedAccess: {
+			adminName: {
+				type: String, 
+				default: null
+			},
+
+			adminId: {
+				type: Number, 
+				default: null
+			},
+
+			dateOfAction: {
+				type: Date, 
+				default: null
+			},
+
+			userId: {
 				type: String,
 				default: null
 			}
@@ -107,7 +129,7 @@ const botConfigSchema = new Schema({
 				default: null
 			},
 
-			adminID: {
+			adminId: {
 				type: Number, 
 				default: null
 			},
@@ -117,7 +139,51 @@ const botConfigSchema = new Schema({
 				default: null
 			},
 
-			userID: {
+			userId: {
+				type: String,
+				default: null
+			}
+		},
+
+        banUser: { 
+			adminName: {
+				type: String, 
+				default: null
+			},
+
+			adminId: {
+				type: Number, 
+				default: null
+			},
+
+			dateOfAction: {
+				type: Date, 
+				default: null
+			},
+
+			userId: {
+				type: String,
+				default: null
+			}
+		},
+
+        unbanUser: { 
+			adminName: {
+				type: String, 
+				default: null
+			},
+
+			adminId: {
+				type: Number, 
+				default: null
+			},
+
+			dateOfAction: {
+				type: Date, 
+				default: null
+			},
+
+			userId: {
 				type: String,
 				default: null
 			}

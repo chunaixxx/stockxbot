@@ -1,6 +1,12 @@
 import { Keyboard } from 'vk-io'
 
 export const editGoodMarkup = [
+    [
+        Keyboard.textButton({
+			label: 'Описание',
+			color: 'primary',
+		})
+    ],
 	[
 		Keyboard.textButton({
 			label: 'Цена',
@@ -34,6 +40,12 @@ export const editGoodMarkup = [
 ]
 
 export const editGoodNotSizeMarkup = [
+    [
+        Keyboard.textButton({
+			label: 'Описание',
+			color: 'primary',
+		})
+    ],
 	[
 		Keyboard.textButton({
 			label: 'Цена',
@@ -56,20 +68,40 @@ export const editGoodNotSizeMarkup = [
 	],
 ]
 
-export const mainProfileMarkup = [
-	[
-		Keyboard.textButton({
-			label: 'Все объявления',
-			color: 'positive',
-		}),
-	],
+export const deleteDescGoodMarkup = [
+    [
+        Keyboard.textButton({
+            label: 'Удалить',
+            color: 'negative',
+        }),
+    ]
+]
 
+export const updateGoodsMarkup = [
     [
 		Keyboard.textButton({
 			label: 'Обновить товары',
 			color: 'positive',
 		}),
 	],
+]
+
+export const editGoodsMarkup = [
+	[
+		Keyboard.textButton({
+			label: 'Все объявления',
+			color: 'primary',
+		}),
+	],    
+]
+
+export const showOtherProfileMarkup = [
+	[
+		Keyboard.textButton({
+			label: 'Чужой профиль',
+			color: 'primary',
+		}),
+	],    
 ]
 
 export const subArchiveMarkup = [
@@ -95,7 +127,7 @@ export const subSearchGoodMarkup = [
 	[
 		Keyboard.textButton({
 			label: 'Подписка на поиск',
-			color: 'positive',
+			color: 'primary',
 		}),
 	],        
 ]
@@ -104,11 +136,17 @@ export const editAllGoodsMarkup = [
     [
         Keyboard.textButton({
 			label: 'Доставка',
-			color: 'positive',
+			color: 'primary',
 		}),
         Keyboard.textButton({
 			label: 'Примерка',
-			color: 'positive',
+			color: 'primary',
 		}),
     ],
+    [
+        Keyboard.textButton({
+			label: 'Цена',
+			color: 'primary',
+		}),
+    ]
 ]

@@ -1,10 +1,12 @@
 import { 
-    addExtendedMarkup, 
+    addExtendedMarkup,
+    extendExtendedMarkup,
     removeExtendedMarkup, 
     addAdminMarkup, 
     deleteAdminMarkup, 
     banMarkup, 
-    unBanMarkup 
+    unBanMarkup,
+    manageSearchSellMenuMarkup
 } from '../../markup/adminMarkup'
 
 // Собирает клавиатуру для управления пользователем
@@ -12,11 +14,16 @@ export default ({ user, admin }) => {
     const markup = []
 
     if (user.settingsAccess == false || user.userId == admin.userId) {
-        // Отображение кнопки "выдать расширенный доступ" или забрать
-        if (user.extendedAccess)
+        // Кнопки: выдать, забрать, продлить
+        if (user.extendedAccess) {
             markup.push(removeExtendedMarkup)
-        else
+
+            if (!user.extendedAccess.forever)
+                markup.push(extendExtendedMarkup)
+        } else {
             markup.push(addExtendedMarkup)
+            markup.push(manageSearchSellMenuMarkup)
+        }
 
         // Отображение кнопки "снять админа" или "добавить админа"
         if (admin.settingsAccess && admin.userId != user.userId && user.settingsAccess == false)

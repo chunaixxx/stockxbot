@@ -12,11 +12,6 @@ const goodSchema = new Schema({
 		required: true,
 	},
 
-	extendedAccess: { 
-		type: Boolean, 
-		default: false
-	},
-
 	adminAccess: { 
 		type: Boolean, 
 		default: false
@@ -37,7 +32,17 @@ const goodSchema = new Schema({
 			type: Date,
 			default: null
 		}
-	}
+	},
+
+    freeSearch: {
+        type: Number,
+        default: 0
+    },
+
+    freeSell: {
+        type: Number,
+        default: 0
+    }
 })
 
 const User = mongoose.model('User', goodSchema)

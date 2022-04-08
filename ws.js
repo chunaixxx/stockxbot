@@ -2,6 +2,8 @@ import WebSocket from 'ws'
 import config from 'config'
 import vk from './commonVK'
 
+const configName = config.get('configName')
+
 class WS {
     constructor() {
         if (typeof WS.instance === 'object')
@@ -13,13 +15,15 @@ class WS {
     }
 
     connect() {
+        if (configName == 'DEV') return
+
         this.ws = new WebSocket(`ws://localhost:1337?groupId=${config.get('groupID')}`)
 
-        console.log('CLIENT: connect')
+        console.log('CLIENT WS: connect')
 
         this.ws.on('message', data => this.onMessage(data))
         this.ws.on('close', () => this.onClose())
-        this.ws.on('error', e => console.log(e))
+        this.ws.on('error', e => console.dir(e.code))
     }
 
     async onMessage(data) {
@@ -52,14 +56,14 @@ class WS {
     }
 
     onClose() {
-        console.log('CLIENT: close server')
+        console.log('CLIENT WS: close server')
 
         this.ws = null
 
         setTimeout(() => {
-            console.log('CLIENT: reconnect')
+            console.log('CLIENT WS: reconnect')
             this.connect()
-        }, 10000)
+        }, 60 * 1000)
     }
 }
 

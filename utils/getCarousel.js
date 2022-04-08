@@ -48,12 +48,12 @@ export default async goods => {
         for (const good of goods) {
             let description = ''
 
-            let formattedCity = good.city.length > 16 ? '' : good.city + ' |'
+            let formattedCity = good.city.length > 16 ? '' : '| ' + good.city 
 
             if (good.size)
-                description += `${ formattedCity } ${good.size} US | ${good.price}руб.\nДоставка: ${good.hasDelivery} | Примерка: ${good.hasFitting}`
+                description += `${good.size} US | ${good.price}₽ ${ formattedCity }\nДоставка: ${good.hasDelivery} | Примерка: ${good.hasFitting}`
 		    else
-                description += `${ formattedCity } ${good.price}руб. | Доставка: ${good.hasDelivery}`
+                description += `${good.price}₽ ${ formattedCity }\nДоставка: ${good.hasDelivery}`
 
             let formattedSellerName = ''
 
@@ -62,19 +62,27 @@ export default async goods => {
             else
                 formattedSellerName = good.sellerName
 
+            const buttons = [
+                {
+                    action: {
+                        type: "text",
+                        label: good.desc ? good.desc : '⠀',
+                    }
+                },
+                {         
+                    action: {
+                        type: 'open_link',
+                        link: `https://vk.com/id${good.sellerId}`,
+                        label: formattedSellerName,
+                    },
+                },
+            ]
+
             const carouselItem = {
                 title: good.goodName,
                 description,
                 photo_id: carouselPhotos[`${good.goodName}`],
-                buttons: [
-                    {         
-                        action: {
-                            type: 'open_link',
-                            link: `https://vk.com/id${good.sellerId}`,
-                            label: formattedSellerName,
-                        }
-                    }
-                ]
+                buttons
             }
 
             carousel.push(carouselItem)

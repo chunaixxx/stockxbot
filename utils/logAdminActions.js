@@ -5,21 +5,20 @@ import convertDate from '../utils/convertDate.js'
 import fs from 'fs';
 const fsPromises = fs.promises;
 
-const logAdminActions = async (id, action, userID) => {
+const logAdminActions = async ({ adminId, userId, action }) => {
     try {
-        const { firstname, lastname} = await getUserName(id)
+        const { firstname, lastname} = await getUserName(adminId)
         const dateOfAction = Date.now()
-        const adminID = id
     
         const newAction = {} 
         newAction[`lastAdminActions.${action}`] = {
             adminName: `${ firstname } ${ lastname }`,
-            adminID,                    
+            adminId,                    
             dateOfAction,
-            userID
+            userId
         }
     
-        await fsPromises.appendFile('./logs/adminAction.log', `[${convertDate(dateOfAction)}] ${action} | ${ firstname } ${ lastname } (AdminID ${adminID}) | UserID ${userID}\n`)
+        await fsPromises.appendFile('./logs/adminAction.log', `[${convertDate(dateOfAction)}] ${action} | ${ firstname } ${ lastname } (AdminID ${adminId}) | UserID ${userId}\n`)
     
         await BotConfig.updateOne({
             $set: newAction

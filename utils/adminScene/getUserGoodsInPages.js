@@ -14,12 +14,18 @@ export default goods => {
 			price,
 			hasDelivery,
 			hasFitting,
+            desc
 		} = item
 
 		if (size)
-			sendString += `📌 @id${sellerId} (${sellerName}), ${city}\n${goodName}\nРазмер: ${size} | Цена: ${price}руб. | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
+			sendString += `📌 @id${sellerId} (${sellerName}), ${city}\n${goodName}\nРазмер: ${size} | Цена: ${price}₽ | Доставка: ${hasDelivery} | Примерка: ${hasFitting}`
 		else
-			sendString += `📌 @id${sellerId} (${sellerName}), ${city}\n${goodName}\nЦена: ${price}руб. | Доставка: ${hasDelivery}\n\n`
+			sendString += `📌 @id${sellerId} (${sellerName}), ${city}\n${goodName}\nЦена: ${price}₽ | Доставка: ${hasDelivery}`
+
+        if (desc)
+            sendString += `\n📝 ${desc}`
+
+        sendString += '\n\n'
 
 		counter += 1
 

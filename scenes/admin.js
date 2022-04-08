@@ -5,10 +5,8 @@ import moment from 'moment'
 import baseSendMessage from '../baseSendMessage'
 
 import keyboard from '../markup/keyboard'
-import { mainAdminMarkup, removeAllAdsMarkup, banReasonMarkup } from '../markup/adminMarkup'
+import { mainAdminMarkup, removeAllAdsMarkup, banReasonMarkup, selectDaysMarkup, manageSearchSellMarkup } from '../markup/adminMarkup'
 import { menuMarkup, previousMarkup } from '../markup/generalMarkup'
-
-import { resetSearchInfo } from '../utils/updateSearchInfo'
 
 import User from '../models/User'
 import BannedUser from '../models/BannedUser'
@@ -20,12 +18,13 @@ import getUserDossierMessage from '../utils/adminScene/getUserDossierMessage'
 import getManageUserMarkup from '../utils/adminScene/getManageUserMarkup'
 import getUserGoodsInPages from '../utils/adminScene/getUserGoodsInPages'
 
-import logAdminActions from '../utils/logAdminActions'
+import { giveExtendedAccess, takeExtendedAccess, extendExtendedAccess, deleteAllAds, giveAdminAccess, takeAdminAccess, banUser, unbanUser, findExtendedUser } from '../controllers/manageUser'
 
 const adminScene = [
 	new StepScene('admin', [
 		async ctx => {
             ctx.scene.state.selectedUser = null
+            ctx.scene.state.typeManageSearchSell = null
 			const admin = ctx.state.user
 
 			if (ctx.scene.step.firstTime)
@@ -39,7 +38,7 @@ const adminScene = [
                     baseSendMessage(ctx)
                     return ctx.scene.leave()
                 case 'Статистика':
-                    return ctx.scene.step.go(7)
+                    return ctx.scene.step.go(8)
                 case 'Выбрать меня':
                     ctx.scene.state.selectedUserId = admin.userId
                     return ctx.scene.step.next()
@@ -72,24 +71,21 @@ const adminScene = [
 
             const selectedUserId = ctx.scene.state.selectedUserId
 
-            const selectedUser = await User.findOne({ userId: selectedUserId })
+            const selectedUser = await User.findOne({ userId: selectedUserId }).lean()
             const bannedUser = await BannedUser.findOne({ userId: selectedUserId })
             const countGoods = await Good.countDocuments({ sellerId: selectedUserId })
 
             ctx.scene.state.selectedUser = selectedUser
             ctx.scene.state.bannedUser = bannedUser
 
-            const { username, userId, searchInfo, extendedAccess, adminAccess, settingsAccess } = ctx.scene.state.selectedUser
+            const { username, userId, searchInfo, adminAccess, settingsAccess } = ctx.scene.state.selectedUser
+            const extendedAccess = await findExtendedUser(userId)
 
             if (ctx.scene.step.firstTime || !ctx.text) {
                 try {
                     const userDossierMessage = getUserDossierMessage({
-                        username, 
-                        userId, 
-                        searchInfo,
-                        extendedAccess, 
-                        adminAccess, 
-                        settingsAccess,
+                        ...selectedUser,
+                        extendedAccess,
                         countGoods,
                         bannedUser
                     })
@@ -143,47 +139,149 @@ const adminScene = [
                 return ctx.scene.step.go(0)
 
             if (settingsAccess == false || (settingsAccess && ctx.senderId == userId)) {
-                if (ctx.text == 'Выдать расширенный доступ' && extendedAccess == false)
+                if (ctx.text == 'Выдать PRO' && !extendedAccess)
                     return ctx.scene.step.go(2)
-                
-                if (ctx.text == 'Забрать расширенный доступ' && extendedAccess)
+
+                if (ctx.text == 'Продлить PRO' && extendedAccess?.forever == false)
                     return ctx.scene.step.go(3)
+                
+                if (ctx.text == 'Забрать PRO' && extendedAccess)
+                    return ctx.scene.step.go(4)
 
                 if (ctx.text == 'Удалить объявления пользователя')
-                    return ctx.scene.step.go(4)
+                    return ctx.scene.step.go(5)
+
+                if (ctx.text == 'Управление поисками/продажами' && extendedAccess == null)
+                    return ctx.scene.step.go(11)
             }
 
             if (settingsAccess == false && adminAccess == false) {
                 if (ctx.text == 'Разблокировать' && bannedUser)
-                    return ctx.scene.step.go(8)
+                    return ctx.scene.step.go(9)
 
                 if (ctx.text == 'Заблокировать' && bannedUser == null)
-                    return ctx.scene.step.go(9)
+                    return ctx.scene.step.go(10)
             }
 
             if (admin.settingsAccess && admin.userId != userId && settingsAccess == false) {
                 if (!adminAccess && ctx.text == 'Назначить администратора')
-                    return ctx.scene.step.go(5)
-                else if (adminAccess && ctx.text == 'Снять администратора')
                     return ctx.scene.step.go(6)
+                else if (adminAccess && ctx.text == 'Снять администратора')
+                    return ctx.scene.step.go(7)
             }
             //
 		},
 
 		// Выдать расширенный доступ
 		async ctx => {
-			const selectedUser = ctx.scene.state.selectedUser
-
             try {
-                await logAdminActions(ctx.senderId, 'giveExtendedAccess', selectedUser.userId)
+                const userId = ctx.scene.state.selectedUser.userId
+                const adminId = ctx.state.user.userId
 
-                await User.updateOne(
-                    { _id: selectedUser._id },
-                    { $set: { extendedAccess: true } }
-                )
+                if (ctx.scene.step.firstTime)
+                    return ctx.send({
+                        message: '❗ На сколько дней выдать PRO-версию? Для выбора используй кнопки или напиши вручную нужное количество дней',
+                        keyboard: keyboard([...selectDaysMarkup, ...previousMarkup])
+                    })
 
-                ctx.send('❗ Пользователю успешно выдан расширенный доступ')
-                
+                if (ctx.text == 'Назад') 
+                    return ctx.scene.step.go(0)
+
+                let result = null
+
+                if (ctx.text == 'Навсегда') {
+                    result = await giveExtendedAccess({
+                        adminId,
+                        userId,
+                        forever: true
+                    })
+                } else {
+                    const patternNumber = /^\d+$/
+                    if (patternNumber.test(ctx.text) == false)
+                        return ctx.send({
+                            message: '❗ Неправильный формат ввода. Укажи число',
+                            keyboard: keyboard(previousMarkup)
+                        })
+
+                    if (+ctx.text > 365)
+                        return ctx.send({
+                            message: '❗ Максимальное количество дней — 365 ',
+                            keyboard: keyboard(previousMarkup)
+                        })
+
+                    if (+ctx.text < 1)
+                        return ctx.send({
+                            message: '❗ Минимальное количество дней — 1',
+                            keyboard: keyboard(previousMarkup)
+                        })
+
+                    result = await giveExtendedAccess({
+                        adminId,
+                        userId,
+                        days: +ctx.text
+                    })
+                }
+
+                ctx.send(result.message)
+                return ctx.scene.step.go(1)
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                return ctx.scene.leave()
+            }
+		},
+
+        // Продлить расширенный доступ
+		async ctx => {
+            try {
+                const userId = ctx.scene.state.selectedUser.userId
+                const adminId = ctx.state.user.userId
+
+                if (ctx.scene.step.firstTime)
+                    return ctx.send({
+                        message: '❗ На сколько дней продлить PRO-версию? Для выбора используй кнопки или напиши вручную нужное количество дней',
+                        keyboard: keyboard([...selectDaysMarkup, ...previousMarkup])
+                    })
+
+                if (ctx.text == 'Назад') 
+                    return ctx.scene.step.go(0)
+
+                let result = null
+
+                if (ctx.text == 'Навсегда') {
+                    result = await extendExtendedAccess({
+                        adminId,
+                        userId,
+                        forever: true
+                    })
+                } else {
+                    const patternNumber = /^\d+$/
+                    if (patternNumber.test(ctx.text) == false)
+                        return ctx.send({
+                            message: '❗ Неправильный формат ввода. Укажи число',
+                            keyboard: keyboard(previousMarkup)
+                        })
+
+                    if (+ctx.text > 365)
+                        return ctx.send({
+                            message: '❗ Максимальное количество дней — 365 ',
+                            keyboard: keyboard(previousMarkup)
+                        })
+
+                    if (+ctx.text < 1)
+                        return ctx.send({
+                            message: '❗ Минимальное количество дней — 1',
+                            keyboard: keyboard(previousMarkup)
+                        })
+
+                    result = await extendExtendedAccess({
+                        adminId,
+                        userId,
+                        days: +ctx.text
+                    })
+                }
+
+                ctx.send(result.message)
                 return ctx.scene.step.go(1)
             } catch (e) {
                 console.log(e)
@@ -194,96 +292,43 @@ const adminScene = [
 
 		// Забрать расширенный доступ
 		async ctx => {
-			const selectedUser = ctx.scene.state.selectedUser
+			const userId = ctx.scene.state.selectedUser.userId
+            const adminId = ctx.state.user.userId
 
-            try {
-                await logAdminActions(
-                    ctx.senderId,
-                    'takeExtendedAccess',
-                    selectedUser.userId
-                )
+            const result = await takeExtendedAccess({ adminId, userId })
+            ctx.send(result.message)
 
-                await User.updateOne(
-                    { _id: selectedUser._id },
-                    {
-                        $set: {
-                            extendedAccess: false,
-                            'searchInfo.count': 0,
-                            'searchInfo.lastSearch': null,
-                        }
-                    }
-                )
-
-                await MailingUser.deleteMany({
-                    type: 'subscribeSearch',
-                    userId: selectedUser.userId
-                })
-
-                await resetSearchInfo(selectedUser.userId)
-
-                ctx.send('❗ У пользователя снят расширенный доступ')
-                return ctx.scene.step.go(1)
-            } catch (e) {
-                console.log(e)
-                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-                return ctx.scene.leave()
-            }
+            return ctx.scene.step.go(1)
 		},
 
 		// Удалить объявления пользователя
 		async ctx => {
 			const selectedUser = ctx.scene.state.selectedUser
 
-			try {
-				await logAdminActions(
-					ctx.senderId,
-					'deleteAllGoods',
-					selectedUser.userId
-				)
-				await Good.deleteMany({ sellerId: selectedUser.userId }),
-					ctx.send('❗ У пользователя удалены все объявления')
-				return ctx.scene.step.go(0)
-			} catch (e) {
-				console.log(e)
-				ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-				return ctx.scene.leave()
-			}
+            const result = await deleteAllAds({ adminId: ctx.senderId, userId: selectedUser.userId })
+            ctx.send(result.message)
+
+            return ctx.scene.step.go(0)
 		},
 
         // Назначить администратора
         async ctx => {
         	const selectedUser = ctx.scene.state.selectedUser
 
-            try {
-                await User.updateOne(
-                    { _id: selectedUser._id },
-                    { $set: { adminAccess: true } }
-                )
-                ctx.send('❗ Пользователю успешно выданы полномочия администратора')
-                return ctx.scene.step.go(1)
-            } catch (e) {
-                console.log(e)
-                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-                return ctx.scene.leave()
-            }
+            const result = await giveAdminAccess({ userId: selectedUser.userId})
+            ctx.send(result.message)
+
+            return ctx.scene.step.go(1)
         },
 
         // Снять администратора
         async ctx => {
-        	const selectedUser = ctx.scene.state.selectedUser
+            const selectedUser = ctx.scene.state.selectedUser
 
-            try {
-                await User.updateOne(
-                    { _id: selectedUser._id },
-                    { $set: { adminAccess: false } }
-                )
-                ctx.send('❗ У пользователя сняты полномочия администратора')
-                return ctx.scene.step.go(1)
-            } catch (e) {
-                console.log(e)
-                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-                return ctx.scene.leave()
-            }
+            const result = await takeAdminAccess({ userId: selectedUser.userId})
+            ctx.send(result.message)
+
+            return ctx.scene.step.go(1)
         },
         
 		// Статистика
@@ -324,15 +369,10 @@ const adminScene = [
         async ctx => {
         	const selectedUser = ctx.scene.state.selectedUser
 
-            try {
-                await BannedUser.deleteOne({ userId: selectedUser.userId })
-                ctx.send('❗ Пользователь разблокирован')
-                return ctx.scene.step.go(1)
-            } catch (e) {
-                console.log(e)
-                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-                return ctx.scene.leave()
-            }            
+            const result = await unbanUser({ adminId: ctx.senderId, userId: selectedUser.userId })
+            ctx.send(result.message)
+
+            return ctx.scene.step.go(1)   
         },
 
         // Заблокировать
@@ -347,30 +387,140 @@ const adminScene = [
                 return ctx.scene.step.go(1)
 
             const selectedUser = ctx.scene.state.selectedUser
+            const result = await banUser({ adminId: ctx.senderId, userId: selectedUser.userId, reason: ctx.text })  
+            ctx.send(result.message)
 
-            try {
-                await Good.updateMany(
-                    { sellerId: selectedUser.userId },
-                    { $set: { isHide: true } }
-                )
+            return ctx.scene.step.go(1) 
+        },
 
+        async ctx => {
+            ctx.scene.state.typeManageSearchSell = null
+            const selectedUser = ctx.scene.state.selectedUser
 
-                const bannedUser = new BannedUser({
-                    userId: selectedUser.userId,
-                    expiresIn: Date.now(),
-                    reason: ctx.text
+            if (ctx.text == 'Назад')
+                return ctx.scene.step.go(1)
+
+            if (ctx.scene.step.firstTime)
+                return ctx.send({
+                    message: '❗ Укажи какие параметры хочешь изменить',
+                    keyboard: keyboard([...manageSearchSellMarkup, ...previousMarkup])
                 })
 
-                await bannedUser.save()
+            if (ctx.text == 'Выдать поиски') {
+                ctx.scene.state.typeManageSearchSell = 'giveSearch'
+                return ctx.scene.step.go(12)
+            }
+                
+            if (ctx.text == 'Забрать поиски') {
+                if (selectedUser.freeSearch == 0)
+                    return ctx.send({
+                        message: '❗ У пользователя 0 поисков',
+                        keyboard: keyboard(previousMarkup)
+                    })
 
-                ctx.send('❗ Пользователь заблокирован')
-                return ctx.scene.step.go(1)
-            } catch (e) {
-                console.log(e)
-                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
-                return ctx.scene.leave()
-            }            
-        }
+                ctx.scene.state.typeManageSearchSell = 'takeSearch'
+                return ctx.scene.step.go(12)
+            }
+
+            if (ctx.text == 'Выдать продажи') {
+                ctx.scene.state.typeManageSearchSell = 'giveSell'
+                return ctx.scene.step.go(12)
+            }
+
+            if (ctx.text == 'Забрать продажи') {
+                if (selectedUser.freeSearch == 0)
+                    return ctx.send({
+                        message: '❗ У пользователя 0 продаж',
+                        keyboard: keyboard(previousMarkup)
+                    })
+
+                ctx.scene.state.typeManageSearchSell = 'takeSell'
+                return ctx.scene.step.go(12)
+            }
+        },
+
+        // Выдать/забрать поиски/продажи
+        async ctx => {
+            try {
+                const typeManageSearchSell = ctx.scene.state.typeManageSearchSell
+                let title = ''
+
+                if (typeManageSearchSell == 'giveSearch')
+                    title = '❗ Сколько выдать поисков?'
+                if (typeManageSearchSell == 'takeSearch')
+                    title = '❗ Сколько забрать поисков?'
+                if (typeManageSearchSell == 'giveSell')
+                    title = '❗ Сколько выдать продаж?'
+                if (typeManageSearchSell == 'takeSell')
+                    title = '❗ Сколько забрать продаж?'
+
+                if (ctx.scene.step.firstTime)
+                    return ctx.send({
+                        message: title,
+                        keyboard: keyboard(previousMarkup)
+                    })
+
+                if (ctx.text == 'Назад')
+                    return ctx.scene.step.go(11)
+
+                const patternNumber = /^\d+$/             
+                
+                if (patternNumber.test(ctx.text)) {
+                    const selectedUser = ctx.scene.state.selectedUser
+
+                    if (typeManageSearchSell == 'giveSearch') {
+                        await User.updateOne(
+                            { userId: selectedUser.userId },
+                            { $inc: { freeSearch: +ctx.text } }
+                        )
+                    }
+
+                    if (typeManageSearchSell == 'takeSearch') {
+                        if (selectedUser.freeSearch - +ctx.text < 0) {
+                            return ctx.send({
+                                message: '❗ У пользователя тогда будет отрицательное количество поисков. Попробуй еще раз',
+                                keyboard: keyboard(previousMarkup)
+                            })
+                        } else {
+                            await User.updateOne(
+                                { userId: selectedUser.userId },
+                                { $inc: { freeSearch: -(+ctx.text) } }
+                            )
+                        }
+                    } 
+
+                    if (typeManageSearchSell == 'giveSell') {
+                        await User.updateOne(
+                            { userId: selectedUser.userId },
+                            { $inc: { freeSell: +ctx.text } }
+                        )
+                    }
+
+                    if (typeManageSearchSell == 'takeSell') {
+                        if (selectedUser.freeSell - +ctx.text < 0) {
+                            return ctx.send({
+                                message: '❗ У пользователя тогда будет отрицательное количество продаж. Попробуй еще раз',
+                                keyboard: keyboard(previousMarkup)
+                            })
+                        } else {
+                            await User.updateOne(
+                                { userId: selectedUser.userId },
+                                { $inc: { freeSell: -(+ctx.text) } }
+                            )
+                        }
+                    } 
+
+                    ctx.send('❗ Изменения успешно применились')
+                    return ctx.scene.step.go(1) 
+                } else {
+                    return ctx.send('❗ Укажи целое число. Попробуй еще раз')
+                }
+			} catch (e) {
+				console.log(e)
+				ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+				return ctx.scene.leave()
+			}
+        },
 	]),
 ]
 

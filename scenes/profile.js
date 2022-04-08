@@ -1,7 +1,9 @@
 import config from 'config'
 
+import User from '../models/User'
 import Good from '../models/Good'
 import MailingUser from '../models/MailingUser'
+import BannedUser from '../models/BannedUser'
 import BotConfig from '../models/BotConfig'
 
 import vk from '../commonVK'
@@ -12,7 +14,7 @@ import baseSendMessage from '../baseSendMessage'
 import keyboard from '../markup/keyboard'
 
 import { baseMarkup } from '../markup/baseMarkup'
-import { editGoodMarkup, editGoodNotSizeMarkup, mainProfileMarkup, editAllGoodsMarkup, subArchiveMarkup, unSubArchiveMarkup, subSearchGoodMarkup } from '../markup/profileMarkup'
+import { editGoodMarkup, editGoodNotSizeMarkup, editGoodsMarkup, updateGoodsMarkup, editAllGoodsMarkup, subArchiveMarkup, showOtherProfileMarkup, deleteDescGoodMarkup, unSubArchiveMarkup, subSearchGoodMarkup } from '../markup/profileMarkup'
 import { menuMarkup, previousMarkup, answerMarkup, nextMarkup } from '../markup/generalMarkup'
 
 import getGoodFromStockx from '../utils/getGoodFromStockx'
@@ -20,8 +22,13 @@ import generateImage from '../utils/generateImage'
 import { resetSearchInfo } from '../utils/updateSearchInfo'
 import formatSubcribesOnGoods from '../utils/formatMessages/formatSubcribesOnGoods'
 
+import getUserDossierMessage from '../utils/adminScene/getUserDossierMessage'
+import getUserGoodsInPages from '../utils/adminScene/getUserGoodsInPages'
+import { findExtendedUser } from '../controllers/manageUser'
+
 const profileScene = [
 	new StepScene('profile', [
+        // Уведомления о том, что скрыты товары
         async ctx => {
             if (ctx.scene.step.firstTime || !ctx.text) {
                 try {
@@ -57,34 +64,21 @@ const profileScene = [
                     // Товары пользователя
                     const goods = await Good.find({ sellerId: ctx.senderId })
                     ctx.scene.state.goods = goods
-
-                    // Конфигурация бота
-					const { maxSearch, maxGoods, cooldownSearch } = await BotConfig.findOne()
-
-                    // Информация о поисках пользователя
-					const { count: countSearch, lastSearch } = user.searchInfo
                     
                     // Сколько осталось товаров и поисков у пользователя
-					const leftGoods = maxGoods - goods.length
-					const leftSearch = maxSearch - countSearch
+					const leftSell = user?.freeSell
+					const leftSearch = user?.freeSearch
 
 					let sendString = ''
-
-                    // Если прошло время выдать бесплатные поиски
-					if (lastSearch && Date.now() - lastSearch.getTime() >= cooldownSearch) {
-						await resetSearchInfo(ctx.senderId)
-						sendString += `❗ Тебе снова доступны бесплатные поиски!\n\n`
-					}
-
 					if (user.extendedAccess)
-						sendString += `❗ Профиль\nОбъявлений: ${ goods.length } (осталось ∞)\nПоисков: ${ countSearch } (осталось ∞)\nВы имеете расширенный доступ в котором нет ограничений\n\n`
+						sendString += `❗ Профиль | PRO-версия 🚀\n\nДоступно объявлений: ∞\nДоступно поисков: ∞\n`
 					else
-						sendString += `❗ Профиль\nОбъявлений: ${ goods.length } (осталось ${ leftGoods })\nПоисков: ${ countSearch } (осталось ${ leftSearch })\n\n❗ Для снятия ограничений — оформите расширенный доступ\n\n`
+						sendString += `❗ Профиль\n\nДоступно объявлений: ${ leftSell }\nДоступно поисков: ${ leftSearch }\n\n❗ Для снятия ограничений — приобрети PRO-версию!\n\n`
 
 
 					if (goods.length === 0) {
 						return ctx.send({
-							message: sendString + '❗ У тебя отсутствуют объявления. Попробуй создать их с помощью кнопки — Продать',
+							message: sendString + '\n\n❗ У тебя отсутствуют объявления. Попробуй создать их с помощью кнопки — Продать',
 							keyboard: user.extendedAccess ? keyboard([...subSearchGoodMarkup, ...menuMarkup]) : keyboard(menuMarkup),
 						})
 					} else {
@@ -95,18 +89,28 @@ const profileScene = [
                         let counter = 0;
                         const pages = []
                         goods.forEach((item, index) => {
-                            const { goodName, size, price, city, views, hasDelivery, hasFitting, isHide } = item
+                            const { goodName, size, price, city, views, hasDelivery, hasFitting, isHide, desc } = item
     
                             sendString += `[${index + 1}] `
     
                             if (isHide)
                                 sendString += '🔒 Неактивно 🔒 '
+
+                            let strViews = ''
+
+                            if (user.extendedAccess)
+                                strViews = ` | ${views} показов`
     
                             if (size)
-                                sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting} | ${views} показов\n\n`
+                                sendString += `${goodName}\n${size} | ${price}₽ | ${city} | Доставка: ${hasDelivery} | Примерка: ${ hasFitting }${ strViews }`
                             else
-                                sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery} | ${views} показов\n\n`
+                                sendString += `${goodName}\n${price}₽ | ${city} | Доставка: ${hasDelivery} | ${views} показов`
     
+                            if (desc)
+                                sendString += `\n📝 ${desc}`
+
+                            sendString += '\n\n'
+
                             counter += 1
     
                             if (counter >= 20 || goods.length - 1 == index) {
@@ -132,9 +136,9 @@ const profileScene = [
                         return ctx.send({
                             message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
                             keyboard: user.extendedAccess ? 
-                                    keyboard([...mainProfileMarkup, ...subscribeMarkup, ...subSearchGoodMarkup, ...menuMarkup]) 
+                                    keyboard([...editGoodsMarkup, ...updateGoodsMarkup, ...subscribeMarkup, ...subSearchGoodMarkup, ...showOtherProfileMarkup, ...menuMarkup]) 
                                 : 
-                                    keyboard([...mainProfileMarkup, ...subscribeMarkup, ...menuMarkup]),
+                                    keyboard([...updateGoodsMarkup, ...subscribeMarkup, ...menuMarkup]),
                         }) 
                     }
 				} catch (e) {
@@ -148,15 +152,18 @@ const profileScene = [
                 case 'Меню':
                     baseSendMessage(ctx)
                     return ctx.scene.leave()
-                case 'Все объявления':
-                    return ctx.scene.step.go(8)
                 case 'Обновить товары':
-                    return ctx.scene.step.go(11)
+                    return ctx.scene.step.go(13)
             }
 
+            if (ctx.text == 'Все объявления' && ctx.state.user.extendedAccess)
+                return ctx.scene.step.go(9)
+
             if (ctx.text == 'Подписка на поиск' && ctx.state.user.extendedAccess)
-                return ctx.scene.step.go(12)
-            
+                return ctx.scene.step.go(14)
+
+            if (ctx.text == 'Чужой профиль' && ctx.state.user.extendedAccess)
+                return ctx.scene.step.go(15)
 
             // Рассылка архивации товаров
             try {
@@ -212,12 +219,15 @@ const profileScene = [
 
 				let sendString = '❗ Используй кнопки, чтобы редактировать объявление\n\n'
 
-				const { goodName, size, price, city, hasDelivery, hasFitting } = ctx.scene.state.selectedGood
+				const { goodName, size, price, city, hasDelivery, hasFitting, desc } = ctx.scene.state.selectedGood
 
 				if (ctx.scene.state.selectedGood.size)
-					sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting}\n\n`
+					sendString += `${goodName}\n${size} | ${price}руб. | ${city} | Доставка: ${hasDelivery} | Примерка: ${hasFitting}`
 				else 
-                    sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery}\n\n`
+                    sendString += `${goodName}\n${price}руб. | ${city} | Доставка: ${hasDelivery}`
+
+                if (desc)
+                    sendString += `\n${ desc }`
 
 				const markup = ctx.scene.state.selectedGood.size ? editGoodMarkup : editGoodNotSizeMarkup
 
@@ -254,18 +264,74 @@ const profileScene = [
 				}
 			}
 
+            if (ctx.text == 'Описание') {
+                if (ctx.state.user.extendedAccess) {
+				    return ctx.scene.step.go(3)
+                } else {
+                    ctx.send('❗ Этот функционал доступен только в PRO-версии')
+                    return ctx.scene.step.go(2)
+                }
+            }
+
 			if (ctx.text == 'Размер' && ctx.scene.state.selectedGood.size)
-				return ctx.scene.step.go(3)
+				return ctx.scene.step.go(4)
 
             if (ctx.text == 'Цена')
-				return ctx.scene.step.go(4)
+				return ctx.scene.step.go(5)
             
             if (ctx.text == 'Доставка')
-				return ctx.scene.step.go(5)
+				return ctx.scene.step.go(6)
 
             if (ctx.text == 'Примерка' && ctx.scene.state.selectedGood.size)
-				return ctx.scene.step.go(6)
+				return ctx.scene.step.go(7)
 		},
+        // Описание
+        async ctx => {
+            try {
+                if (ctx.scene.step.firstTime || !ctx.text)
+                    return ctx.send({
+                        message: '❗ Укажи новое описание для товара, либо нажми — Удалить, чтобы убрать описание с товара',
+                        keyboard: keyboard([...deleteDescGoodMarkup, ...previousMarkup])
+                    })
+
+                if (ctx.text == 'Назад')
+                    return ctx.scene.step.go(2)
+
+                if (ctx.text == 'Удалить') {
+                    const { selectedGood } = ctx.scene.state
+                
+                    await Good.updateOne(
+                        { _id: selectedGood._id },
+                        { desc: null }
+                    )
+                } else {
+                    if (ctx.text.length > 25)
+                        return ctx.send({
+                            message: '❗ Максимальная длина описания — 25 символов. Попробуй еще раз',
+                            keyboard: keyboard(previousMarkup)
+                        })
+
+                    if (ctx.text.length < 3)
+                        return ctx.send({
+                            message: '❗ Минимальная длина описания — 3 символа. Попробуй еще раз',
+                            keyboard: keyboard(previousMarkup)
+                        })
+
+                    const { selectedGood } = ctx.scene.state
+                    
+                    await Good.updateOne(
+                        { _id: selectedGood._id },
+                        { desc: ctx.text }
+                    )
+                }
+                    
+                ctx.send('❗ Описание успешно добавлено и теперь будет видно другим пользователям при поиске твоего товара')
+                return ctx.scene.step.go(1)
+            } catch (c) {
+                ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+                return ctx.scene.leave()
+            }
+        },
 		// Размер
 		async ctx => {
 			if (!ctx.scene.state.selectedGood.size)
@@ -316,14 +382,13 @@ const profileScene = [
 				})
 
             ctx.scene.state.newGood.size = ctx.text.toUpperCase()
-            ctx.scene.step.go(7)
+            ctx.scene.step.go(8)
 		},
 		// Цена
 		async ctx => {
 			if (ctx.scene.step.firstTime || !ctx.text)
 				return ctx.send({
-					message:
-						'❗ Укажи новую стоимость товара в рублях',
+					message: '❗ Укажи новую стоимость товара в рублях',
 					keyboard: keyboard(previousMarkup),
 				})
 
@@ -347,7 +412,7 @@ const profileScene = [
 				return ctx.send('❗ Минимальная стоимость товара 1руб.')
 
 			ctx.scene.state.newGood.price = ctx.text
-			ctx.scene.step.go(7)
+			ctx.scene.step.go(8)
 		},
         // Доставка
 		async ctx => {
@@ -375,7 +440,7 @@ const profileScene = [
             else 
                 return
 
-            ctx.scene.step.go(7)
+            ctx.scene.step.go(8)
 		},
         // Примерка
 		async ctx => {
@@ -403,7 +468,7 @@ const profileScene = [
             else 
                 return
 
-            ctx.scene.step.go(7)
+            ctx.scene.step.go(8)
 		},
 		// Уточнение по изменению товара
 		async ctx => {
@@ -413,7 +478,6 @@ const profileScene = [
 
                     let { imgUrl, filename } = selectedGood
                     let attachment = null
-
 
                     try {
                         await generateImage(imgUrl, filename)
@@ -478,9 +542,11 @@ const profileScene = [
                 case 'Назад':
                     return ctx.scene.step.go(1)
                 case 'Доставка':
-                    return ctx.scene.step.go(9)
-                case 'Примерка':
                     return ctx.scene.step.go(10)
+                case 'Примерка':
+                    return ctx.scene.step.go(11)
+                case 'Цена':
+                    return ctx.scene.step.go(12)
             }
         },
         // Настройка доставки для всех объявлений
@@ -494,7 +560,7 @@ const profileScene = [
             try {
                 switch (ctx.text) {
                     case 'Назад':
-                        return ctx.scene.step.go(8)
+                        return ctx.scene.step.go(9)
                     case 'Да':
                         await Good.updateMany({ 'sellerId': ctx.peerId }, { hasDelivery: '✅' })
                         ctx.send('✅ Доставка теперь доступна для всех твоих товаров.')
@@ -523,7 +589,7 @@ const profileScene = [
             try {
                 switch (ctx.text) {
                     case 'Назад':
-                        return ctx.scene.step.go(8)
+                        return ctx.scene.step.go(9)
                     case 'Да':
                         await Good.updateMany(
                             { 'sellerId': ctx.peerId, 'hasFitting': { "$in": ['✅', '❌'] } }, 
@@ -541,6 +607,89 @@ const profileScene = [
                 }             
 
                 return ctx.scene.step.go(1)
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
+                return ctx.scene.leave()
+            }     
+        },
+        // Настройка цены для всех объявлений
+        async ctx => {
+            try {
+                if (ctx.scene.step.firstTime || !ctx.text)
+                    return ctx.send({
+                        message: '❗ Укажи стоимость или процент на который нужно повысить каждый товар в стоимости\n\nПример:\n-2000 (Все товары снизят цену на 2000₽)\n20% (Все товары повысят цену на 20 процентов)',
+                        keyboard: keyboard(previousMarkup),
+                    })
+
+                if (ctx.text == 'Назад')
+                    return ctx.scene.step.go(9)
+
+                const patternPercent = /^-?\d+%$/
+                const patternNumber = /^-?\d+$/
+
+                if (patternNumber.test(ctx.text)) {
+                    const price = +ctx.text
+
+                    if (price > 1000000)
+                        return ctx.send('❗ Слишком большое значение. Максимальная наценка - 1.000.000₽')
+
+                    if (price < -1000000)
+                        return ctx.send('❗ Слишком маленькое значение. Максимальная скидка - 1.000.000₽')
+
+                    const goods = await Good.find({ sellerId: ctx.senderId })
+
+                    for (const good of goods) {
+                        let newPrice = good.price + price
+
+                        if (newPrice >= 10_000_000)
+                            newPrice = 10_000_000
+                        
+                        if (newPrice <= 0)
+                            newPrice = 1
+
+                        await Good.updateOne(
+                            { _id: good._id },
+                            { price: newPrice }
+                        )
+                    }
+
+                    ctx.send('❗ Цены на твои товары успешно изменились. Некоторые товары могут иметь другую стоимость из-за ограничений по минимальной и максимальной цены')
+                    return ctx.scene.step.go(1)
+                } else if (patternPercent.test(ctx.text)) {
+                    const percent = +ctx.text.replace('%', '')
+
+                    if (percent > 100)
+                        return ctx.send('❗ Слишком большая наценка. Максимальное значение — 100%')
+                    
+                    if (percent < -75)
+                        return ctx.send('❗ Слишком большая скидка. Максимальное значение — -75%')
+
+                        const goods = await Good.find({ sellerId: ctx.senderId })
+
+                    for (const good of goods) {
+                        let newPrice = Math.ceil(good.price + (good.price * (percent / 100)))
+
+                        if (newPrice >= 10_000_000)
+                            newPrice = 10_000_000
+                        
+                        if (newPrice <= 0)
+                            newPrice = 1
+
+                        await Good.updateOne(
+                            { _id: good._id },
+                            { price: newPrice }
+                        )
+                    }
+
+                    ctx.send('❗ Цены на твои товары успешно изменились. Некоторые товары могут иметь другую стоимость из-за ограничений по минимальной и максимальной цены')
+                    return ctx.scene.step.go(1)
+                } else {
+                    ctx.send({
+                        message: '❗ Неправильный формат ввода. Попробуй еще раз\n\nПримеры: 20, -50, 100, 25.5',
+                        keyboard: keyboard(previousMarkup)
+                    })
+                }
             } catch (e) {
                 console.log(e)
                 ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
@@ -600,7 +749,7 @@ const profileScene = [
                     await MailingUser.deleteOne({ _id: selectedSubcribe._id })
 
                     ctx.send(`✅ Ты успешно отписался от подписки на товар ${ goodName }`)
-                    return ctx.scene.step.go(12)
+                    return ctx.scene.step.go(13)
                 } else {
                     ctx.send({
                         message: '❗ Укажи действительный номер подписки',
@@ -612,6 +761,60 @@ const profileScene = [
                 ctx.send('❗ Произошла какая-то ошибка, обратись к главному администратору')
                 return ctx.scene.leave()
             }            
+        },
+        // Чужой профиль
+        async ctx => {
+            try {
+                if (ctx.scene.step.firstTime)
+                    return ctx.send({
+                        message: '❗ Укажи ID пользователя или перешли его сообщение, чтобы посмотреть его профиль',
+                        keyboard: keyboard(previousMarkup)
+                    })
+
+                if (ctx.text == 'Назад')
+                    return ctx.scene.step.go(1)
+
+                let queryId = ctx.hasForwards ? ctx.forwards[0].senderId : ctx.text
+
+                const foundUser = await User.findOne({ userId: queryId }).lean()
+                const extendedAccess = await findExtendedUser(queryId)
+                const bannedUser = await BannedUser.findOne({ userId: queryId })
+                const countGoods = await Good.countDocuments({ sellerId: queryId })
+
+                if (foundUser) {
+                    const dossierMessage = getUserDossierMessage({
+                        ...foundUser,
+                        extendedAccess,
+                        countGoods,
+                        bannedUser
+                    })
+
+                    ctx.send(dossierMessage)
+
+                    // Вывод товаров
+                    const searchedGoods = await Good.find({ sellerId: queryId })
+                    if (searchedGoods.length) {
+                        ctx.send(`❗ Активные товары пользователя:`)
+
+                        let pages = getUserGoodsInPages(searchedGoods)
+                        pages.forEach(async page => await ctx.send(page))    
+                    }
+
+                    return ctx.send({
+                        message: '❗ Можешь посмотреть еще раз чужой профиль, либо вернуться назад',
+                        keyboard: keyboard(previousMarkup)
+                    })
+                } else {
+                    return ctx.send({
+                        message: '❗ Данный пользователь не найден в базе данных',
+                        keyboard: keyboard(previousMarkup),
+                    })
+                }
+            } catch (e) {
+                console.log(e)
+                ctx.send('❗ Произошла какая-то ошибка, обратитесь к главному администратору')
+                return ctx.scene.leave()
+            }
         }
 	]),
 ]
