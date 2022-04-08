@@ -367,7 +367,7 @@ const searchScene = [
 		},
         // Подписка на поиск
         async ctx => {
-            if (ctx.state.user.extendedAccess == false)
+            if (ctx.state.user.extendedAccess == null)
                 return ctx.scene.step.go(0)
 
             const { userQuery } = ctx.scene.state
