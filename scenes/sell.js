@@ -13,7 +13,7 @@ import baseSendMessage from '../baseSendMessage'
 import keyboard from '../markup/keyboard'
 
 import { baseMarkup } from '../markup/baseMarkup'
-import { menuMarkup, previousMarkup, answerMarkup } from '../markup/generalMarkup'
+import { menuMarkup, previousMarkup, answerMarkup, skipMarkup } from '../markup/generalMarkup'
 import { cityMarkup } from '../markup/sellMarkup'
 
 import generateImage from '../utils/generateImage'
@@ -327,6 +327,37 @@ const sellScene = [
 
 			ctx.scene.step.next()
 		},
+        async ctx => {
+            const user = ctx.state.user
+
+            if (user.extendedAccess == null || ctx.text == 'Пропустить')
+                return ctx.scene.step.next()
+
+            if (ctx.scene.step.firstTime || !ctx.text)
+                return ctx.send({
+                    message: '🚀 Так как у тебя есть PRO-версия, то можешь указать описание к своим товарам',
+                    keyboard: keyboard([...skipMarkup, ...previousMarkup])
+                })
+
+            if (ctx.text == 'Назад')
+				return ctx.scene.step.go(6)
+
+            if (ctx.text.length > 25)
+                return ctx.send({
+                    message: '❗ Максимальная длина описания — 25 символов. Попробуй еще раз',
+                    keyboard: keyboard(previousMarkup)
+                })
+
+            if (ctx.text.length < 3)
+                return ctx.send({
+                    message: '❗ Минимальная длина описания — 3 символа. Попробуй еще раз',
+                    keyboard: keyboard(previousMarkup)
+                })
+
+            ctx.scene.state.descGoods = ctx.text
+
+            ctx.scene.step.next()
+        },
 		// Уточнение правильно ли составлено обьявление и добавление товара в базу данных
 		async ctx => {
             const { link, selectedPrices, selectedSizes, city, hasFitting, hasDelivery } = ctx.scene.state
@@ -341,11 +372,12 @@ const sellScene = [
                 const questionClarification = selectedPrices.length > 1 ? 'Объявления составлены правильно?' : 'Объявление составлено правильно?'
                 const wordPrice = selectedPrices.length > 1 ? 'Цены' : 'Цена'
                 const wordSize = selectedSizes?.length > 1 ? 'Размеры' : 'Размер'
+                const desc = ctx.scene.state.descGoods ? `\n📝 ${ ctx.scene.state.descGoods  }` : ''
 
 				if (allSizes) 
-					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}₽\n${wordSize}: ${formattedSelectedSizes}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}`
+					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}₽\n${wordSize}: ${formattedSelectedSizes}\nГород: ${city}\nПримерка: ${hasFitting}\nДоставка: ${hasDelivery}${ desc }`
 				else
-					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}₽\nГород: ${city}\nДоставка: ${hasDelivery}`
+					message = `❗ ${questionClarification}\n\nНаименование: ${goodName}\n${wordPrice}: ${formattedSelectedPrices}₽\nГород: ${city}\nДоставка: ${hasDelivery}${ desc }`
 
 				ctx.send({
 					message,
@@ -362,6 +394,7 @@ const sellScene = [
                         for (let i = 0; i < selectedPrices.length; i++) {
                             const size = allSizes ? selectedSizes[i] : null
                             const price = selectedPrices[i]
+                            const desc = ctx.scene.state.descGoods ? ctx.scene.state.descGoods : null
 
                             const goodParams = {
                                 sellerId: ctx.senderId,
@@ -374,7 +407,8 @@ const sellScene = [
                                 price,
                                 city,
                                 hasDelivery,
-                                hasFitting
+                                hasFitting,
+                                desc
                             }
         
                             goods.push(goodParams)

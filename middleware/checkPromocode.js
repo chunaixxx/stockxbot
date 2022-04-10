@@ -2,7 +2,7 @@ import { activatePromocode  } from "../controllers/promocode"
 
 export default async (ctx, next) => {
     try {
-        if (!ctx.text) next()
+        if (!ctx.text) return next()
 
         const result = await activatePromocode(ctx.text, ctx.state.user)
 

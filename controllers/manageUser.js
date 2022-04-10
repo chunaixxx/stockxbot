@@ -147,6 +147,11 @@ export const deleteAllAds = async ({ adminId, userId }) => {
     try {
         await logAdminActions({ adminId, userId, action: 'deleteAllGoods'})
         await Good.deleteMany({ sellerId: userId })
+
+        await MailingUser.deleteMany({
+            type: 'archive',
+            userId
+        })
         
         return { message: '❗ У пользователя удалены все объявления' }
     } catch (e) {
@@ -194,6 +199,11 @@ export const banUser = async ({ adminId, userId, reason }) => {
             userId,
             expiresIn: Date.now(),
             reason
+        })
+
+        await MailingUser.deleteMany({
+            type: 'archive',
+            userId
         })
 
         await bannedUser.save()

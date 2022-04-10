@@ -104,7 +104,7 @@ const profileScene = [
                             if (size)
                                 sendString += `${goodName}\n${size} | ${price}₽ | ${city} | Доставка: ${hasDelivery} | Примерка: ${ hasFitting }${ strViews }`
                             else
-                                sendString += `${goodName}\n${price}₽ | ${city} | Доставка: ${hasDelivery} | ${views} показов`
+                                sendString += `${goodName}\n${price}₽ | ${city} | Доставка: ${hasDelivery}${ strViews }`
     
                             if (desc)
                                 sendString += `\n📝 ${desc}`
@@ -251,6 +251,12 @@ const profileScene = [
 							message: '❗ Товар успешно удален. У тебя нет больше товаров ',
 							keyboard: keyboard(baseMarkup)
 						})
+
+                        await MailingUser.deleteMany({
+                            type: 'archive',
+                            userId: ctx.senderId
+                        })
+
 						return ctx.scene.leave()
 					} else {
 						ctx.send('❗ Товар успешно удален')

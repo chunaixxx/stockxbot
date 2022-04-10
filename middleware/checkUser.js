@@ -14,7 +14,7 @@ export default async (ctx, next) => {
             moment.locale('ru');
             const formattedExpiresIn = moment(bannedUser.expiresIn).format('MMMM DD YYYY')
 
-            return ctx.send(`🚫 Тебе закрыт доступ к нашей площадке. Все твои товары пропали из поиска.\n\nПричина: ${ bannedUser.reason }\nИстекает: никогда\n\nПо вопросам разблокировки писать @impossiblelevell`)
+            return ctx.send(`🚫 Тебе закрыт доступ к нашей площадке. Все твои товары пропали из поиска.\n\nПричина: ${ bannedUser.reason }\nИстекает: Никогда\n\nПо вопросам разблокировки писать @impossiblelevell`)
         }
 
 		const user = await User.findOne({ userId: ctx.senderId }).lean().exec()
