@@ -160,7 +160,7 @@ const superadminScene = [
 
                 const patternNumber = /^\d+$/
 
-                if (patternNumber.test(ctx.text) && +ctx.text < promocodes.length) {
+                if (patternNumber.test(ctx.text) && +ctx.text <= promocodes.length) {
                     await deletePromocode(promocodes[+ctx.text - 1].promocode)
                     ctx.send('❗ Промокоды удален')
                     return ctx.scene.step.go(3)
