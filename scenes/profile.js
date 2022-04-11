@@ -134,7 +134,7 @@ const profileScene = [
                         const subscribeMarkup = mailingArchiveUser ? unSubArchiveMarkup : subArchiveMarkup
     
                         return ctx.send({
-                            message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление\n\n❗ Ты можешь отредактировать параметр "Примерка" и "Доставка" сразу для всех объявлений, для этого нажми кнопку "Все объявления"',
+                            message: '❗ Твои объявления. Введи номер (он указан в начале), чтобы отредактировать или удалить объявление',
                             keyboard: user.extendedAccess ? 
                                     keyboard([...editGoodsMarkup, ...updateGoodsMarkup, ...subscribeMarkup, ...subSearchGoodMarkup, ...showOtherProfileMarkup, ...menuMarkup]) 
                                 : 
