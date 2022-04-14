@@ -4,7 +4,7 @@
 	"description": "",
 	"main": "bot.js",
 	"scripts": {
-		"start": "cross-env node --experimental-specifier-resolution=node bot.js",
+		"start": "cross-env NODE_APP_INSTANCE=$npm_config_group node --experimental-specifier-resolution=node bot.js",
 		"dev": "cross-env NODE_APP_INSTANCE=dev nodemon --experimental-specifier-resolution=node bot.js",
 		"dev2": "cross-env NODE_APP_INSTANCE=dev2 nodemon --experimental-specifier-resolution=node bot.js"
 	},
