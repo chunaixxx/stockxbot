@@ -169,7 +169,7 @@ const searchScene = [
         async ctx => {
             if (ctx.scene.step.firstTime || !ctx.text)
                 return ctx.send({
-                    message: '❗️ Использовать фильтрацию по размеру? Введите нужные размеры через пробел в том формате, в котором они указаны на stockx.com. Если не уверены в правильности ввода, обратитесь к FAQ.\n\nПример ввода: 7 7.5Y 7W 11C 4K 12.5 6c XS XXL (это все разные размерные сетки)',
+                    message: config.get('messages.search.filterSize'),
                     keyboard: keyboard([...previousMarkup, ...skipMarkup]),
                 })
 
