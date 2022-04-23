@@ -31,9 +31,6 @@ export default async (product, options) => {
             "sec-fetch-user": "?1",
             "upgrade-insecure-requests": "1",
             "cache-control": "max-age=0",
-            "sec-ch-ua-platform": "Windows",
-            
-            
         },
         followAllRedirects: true,
         followRedirect: true,
@@ -43,6 +40,8 @@ export default async (product, options) => {
     };
 
     const res = await request(reqOptions);
+
+    console.log(res)
 
     checkRes(res);
 
