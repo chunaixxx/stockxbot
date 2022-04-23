@@ -41,8 +41,6 @@ export default async (product, options) => {
 
     const res = await request(reqOptions);
 
-    console.log(res)
-
     checkRes(res);
 
     const { body } = res;
